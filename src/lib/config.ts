@@ -9,4 +9,7 @@
 export const config = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  // サーバー側のみで読める（NEXT_PUBLIC_を付けていないため、ブラウザには送られない）
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  adminPasscode: process.env.ADMIN_PASSCODE ?? "",
 };
