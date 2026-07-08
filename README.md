@@ -3,7 +3,7 @@
 看護師が採血・採取時に「どの容器を使うか」「採取量」「払い出し場所」「注意事項」を
 スマートフォンで即座に確認できるシステムです。
 
-現在のフェーズ: **フェーズ3（看護師が使う画面）完了**
+現在のフェーズ: **フェーズ4（PWA化）完了**
 
 ## 今できること
 
@@ -20,7 +20,6 @@
   - 容器マスタCSV・検査項目マスタCSVのアップロード（取り込みのたびに `import_logs` に記録）
   - 容器写真のアップロード（Supabaseストレージへ保存し、`containers.image_url` を自動更新）
   - 容器マスタの簡易一覧表示
-- 検索エンジンにインデックスされないよう `robots.txt` で全ページを非公開に設定済み。
 - **看護師が使う画面（3つの導線）**
   - `/scan`: スマホカメラでバーコードを読み取り、容器詳細へ自動遷移
     （カメラが使えない場合は12桁を直接入力する欄も用意）
@@ -28,26 +27,35 @@
   - `/search`: 検査項目名で検索して、対応する容器の詳細へ遷移
   - `/containers/[code]`: 3つの導線から共通で使う詳細画面
     （容器写真・採取量・払い出し場所・注意事項・採取指示・問い合わせ先を大きな文字で表示）
-- **サイト全体にBasic認証**を追加しました（`src/proxy.ts`）。ユーザー名は固定で
-  `acliss`、パスワードは合言葉（`VIEWER_PASSCODE`）です。管理画面にはさらに別の
-  合言葉（`ADMIN_PASSCODE`）が必要な二重構成です。
+- **サイト全体にBasic認証**（`src/proxy.ts`）。ユーザー名は固定で `acliss`、
+  パスワードは合言葉（`VIEWER_PASSCODE`）。管理画面にはさらに別の合言葉
+  （`ADMIN_PASSCODE`）が必要な二重構成です。
+- 検索エンジンにインデックスされないよう `robots.txt` で全ページを非公開に設定済み。
+- **PWA対応**
+  - スマホのホーム画面に追加できます（アイコン・アプリ名を設定済み。
+    アイコンは現時点では仮のデザインで、正式なロゴ画像が届き次第差し替えます）
+  - Service Worker（`public/sw.js`）が画面とマスタデータ・容器写真をキャッシュし、
+    通信が不安定でも直近のデータで表示を続けられます
+  - `/containers`・`/search`画面では「最終更新: ◯月◯日」を表示し、
+    オフライン時はその旨が分かるようにしています
 
-## ディレクトリ構成（フェーズ3時点）
+## ディレクトリ構成（フェーズ4時点）
 
 ```
 ACLiSS/
 ├── src/
+│   ├── proxy.ts             サイト全体へのBasic認証（VIEWER_PASSCODE）
 │   ├── app/
-│   │   ├── layout.tsx      共通レイアウト（ヘッダーなど）
-│   │   ├── page.tsx        トップページ（3つの導線ボタン）
-│   │   ├── globals.css     全体のスタイル・ACLiSSの配色定義
-│   │   ├── robots.ts       検索エンジン非公開設定
-│   ├── proxy.ts            サイト全体へのBasic認証（VIEWER_PASSCODE）
-│   │   ├── scan/page.tsx           バーコードスキャン画面
-│   │   ├── containers/page.tsx     容器一覧・検索画面
+│   │   ├── layout.tsx       共通レイアウト（ヘッダー・PWAメタ情報など）
+│   │   ├── page.tsx         トップページ（3つの導線ボタン）
+│   │   ├── globals.css      全体のスタイル・ACLiSSの配色定義
+│   │   ├── manifest.ts      PWAのWebアプリマニフェスト
+│   │   ├── robots.ts        検索エンジン非公開設定
+│   │   ├── scan/page.tsx            バーコードスキャン画面
+│   │   ├── containers/page.tsx      容器一覧・検索画面
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
-│   │   ├── search/page.tsx         検査項目検索画面
-│   │   ├── admin/page.tsx  管理画面（合言葉入力→CSV・写真アップロード・一覧）
+│   │   ├── search/page.tsx          検査項目検索画面
+│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・一覧）
 │   │   └── api/
 │   │       ├── containers/route.ts          GET 容器一覧
 │   │       ├── containers/[code]/route.ts   GET 容器詳細
@@ -56,8 +64,9 @@ ACLiSS/
 │   │           ├── import/route.ts          POST CSV取り込み（合言葉必須）
 │   │           └── upload-image/route.ts    POST 容器写真アップロード（合言葉必須）
 │   ├── components/
-│   │   ├── ContainerDetail.tsx   容器詳細の共通表示コンポーネント
-│   │   └── UpdatedAtNotice.tsx   「最終更新: ◯月◯日」表示
+│   │   ├── ContainerDetail.tsx        容器詳細の共通表示コンポーネント
+│   │   ├── UpdatedAtNotice.tsx        「最終更新: ◯月◯日」表示
+│   │   └── ServiceWorkerRegister.tsx  Service Worker登録
 │   └── lib/
 │       ├── config.ts         バックエンド（Supabase）の接続先を1箇所にまとめる設定ファイル
 │       │                      ※将来、院内イントラに移設する際もこのファイルの中身は変えず、
@@ -67,13 +76,15 @@ ACLiSS/
 │       ├── useMasterData.ts   容器・検査項目一覧を取得し、localStorageにもキャッシュするフック
 │       ├── barcode.ts         バーコード12桁 → 容器コード3桁 変換ロジック
 │       └── types.ts           Container / TestItem の型定義
+├── public/
+│   ├── sw.js               Service Worker本体
+│   └── icons/               PWAアイコン（現在は仮デザイン）
 ├── supabase/
 │   ├── schema.sql        容器マスタ・検査項目マスタ・操作ログのテーブル定義
 │   └── README.md         Supabaseプロジェクト作成手順（依頼者向け）
 ├── docs/
 │   ├── security-overview.md    情報セキュリティ部門向け説明メモ
 │   └── phase1-master-data.md   マスタのExcel列⇔DBフィールド対応表
-├── public/                画像などの静的ファイル
 ├── .env.local.example    環境変数の雛形（実際の値は .env.local に書き、Gitには含めない）
 └── package.json
 ```
@@ -86,23 +97,20 @@ npm run dev
 ```
 
 ブラウザで `http://localhost:3000` を開くと確認できます（ローカルで動作確認する場合。
-iPad等で確認する場合はVercel等へのデプロイが必要です。カメラ機能はHTTPS環境でのみ
-動作するため、バーコードスキャンのテストはVercel等の本番URLで行ってください）。
+iPad等で確認する場合はVercel等へのデプロイが必要です。カメラ機能・PWAのインストールは
+HTTPS環境でのみ動作するため、Vercel等の本番URLで確認してください）。
 
 ## 今の宿題（依頼者側の作業）
 
-1. Vercelの環境変数に `VIEWER_PASSCODE` を追加してください（値は `.env.local` と同じ）。
-   これを忘れるとサイト全体が500エラーになります（安全側の挙動です）。
-2. デプロイ後、サイトを開くとID・パスワードを聞かれます。ユーザー名は `acliss`、
-   パスワードは `VIEWER_PASSCODE` の値を入力してください。
-3. 実際の「ACLiSSマスタ.xlsx」と容器写真一式を、準備でき次第共有いただければ、
+1. デプロイ後のサイトをiPad/iPhoneのSafariで開き、共有ボタン→「ホーム画面に追加」で
+   ホーム画面にアイコンが追加できるか確認してください（アイコンは仮デザインです）。
+2. 実際の「ACLiSSマスタ.xlsx」と容器写真一式を、準備でき次第共有いただければ、
    Excel→CSV変換の手順もご案内します（まだで大丈夫です）。
-4. マスタ投入後、実際のスマホ・iPadで①バーコードスキャン、②容器一覧、③検査項目検索の
-   3つの導線を試してください。
+3. 正式なロゴ画像を共有いただければ、PWAアイコン・ヘッダーに反映します。
 
-## 今後の予定（フェーズ4以降）
+## 今後の予定（フェーズ5以降）
 
-1. PWA化（ホーム画面への追加、オフライン対応の強化）
-2. QRコードでの配布
+1. QRコードでの配布（固定URLをQRコード化）
+2. 運用テスト（iPadでの表示確認、CSV更新→反映の一連の流れの確認）
 
 各フェーズが終わるごとに、動作確認と簡単な説明を挟みながら進めます。
