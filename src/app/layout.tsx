@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ACLiSS",
-  description: "看護師向け臨床検査情報提供システム（ACLiSS）",
+  description: "臨床検査情報提供システム（ACLiSS）",
 };
 
 export default function RootLayout({
@@ -33,7 +33,7 @@ export default function RootLayout({
             <span className="text-xl font-bold tracking-wide">ACLiSS</span>
             <span className="h-5 w-1 rounded bg-gold" aria-hidden="true" />
             <span className="text-sm text-white/80">
-              看護師向け臨床検査情報提供システム
+              臨床検査情報提供システム
             </span>
           </div>
         </header>
