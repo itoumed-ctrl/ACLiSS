@@ -20,19 +20,26 @@
 3. 左メニューの「Table Editor」を開き、`containers` / `test_items` / `import_logs` の
    3つのテーブルができていることを確認
 
-## 3. 接続情報を控える
+## 3. 接続情報を整える
+
+**ファイルの作成・編集が初めてまたは不安でしたら、[詳細な初心者向け手順書](./SETUP-DETAILED.md) を参照してください。**
+
+簡潔版:
 
 1. 左メニューの「Project Settings」→「API」を開く
 2. 以下の2つをコピーする
    - `Project URL`（例: `https://xxxxxxxx.supabase.co`）
    - `anon public` キー（閲覧用の公開キー）
-3. リポジトリ直下に `.env.local` というファイルを作り（`.env.local.example` をコピーして
-   リネームする）、以下のように値を入れる
+3. リポジトリ直下に `.env.local` というファイルを作成
+   - `.env.local.example` をコピーしてリネームするか、新規ファイルを作成
+   - 以下の内容を入力：
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=（コピーしたanon public キー）
 ```
+
+4. ファイルを保存
 
 `.env.local` はGit管理対象外（`.gitignore`に設定済み）なので、このファイルの中身が
 GitHubに公開されることはありません。
