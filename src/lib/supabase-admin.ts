@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { config } from "./config";
 
@@ -19,6 +20,42 @@ export function getSupabaseAdminClient(): SupabaseClient {
   return client;
 }
 
-export function checkAdminPasscode(passcode: string | null): boolean {
+function hashPasscode(passcode: string): string {
+  return createHash("sha256").update(passcode).digest("hex");
+}
+
+/**
+ * 管理画面の合言葉を確認する。
+ * DB（admin_settings）に保存済みならそれと照合し、まだ一度も
+ * 管理画面から変更していない場合は .env.local の ADMIN_PASSCODE を初期値として使う。
+ */
+export async function checkAdminPasscode(passcode: string | null): Promise<boolean> {
+  if (!passcode) return false;
+
+  try {
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { data } = await supabaseAdmin
+      .from("admin_settings")
+      .select("passcode_hash")
+      .eq("id", true)
+      .maybeSingle();
+
+    if (data) {
+      return data.passcode_hash === hashPasscode(passcode);
+    }
+  } catch {
+    // Supabase未接続時などはフォールバックへ
+  }
+
   return !!config.adminPasscode && passcode === config.adminPasscode;
+}
+
+export async function changeAdminPasscode(newPasscode: string): Promise<void> {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const { error } = await supabaseAdmin.from("admin_settings").upsert({
+    id: true,
+    passcode_hash: hashPasscode(newPasscode),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
 }

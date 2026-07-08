@@ -17,8 +17,9 @@
 
 1. Supabaseダッシュボードの左メニューから「SQL Editor」を開く
 2. 「New query」を作成し、このフォルダの `schema.sql` の中身を全部貼り付けて実行（Run）
-3. 左メニューの「Table Editor」を開き、`containers` / `test_items` / `import_logs` の
-   3つのテーブルができていることを確認
+   （何度実行しても壊れないSQLなので、スキーマが更新された際はこの手順を再度行えばよい）
+3. 左メニューの「Table Editor」を開き、`containers` / `test_items` / `import_logs` /
+   `admin_settings` の4つのテーブルができていることを確認
 
 ## 3. 接続情報を整える
 
@@ -60,8 +61,11 @@ GitHubに公開されることはありません。
    （**`anon`との違いに注意**。`service_role`はRLSを無視して書き込みできる強い権限のキーです）
 3. `.env.local` の `SUPABASE_SERVICE_ROLE_KEY=` の後ろに貼り付けて保存
 
-`ADMIN_PASSCODE`（管理画面に入るための合言葉）は `.env.local` にすでに設定されています。
-変更したくなったら、値を書き換えるだけで反映されます（合言葉を変えても既存データには影響しません）。
+`ADMIN_PASSCODE`（管理画面に入るための合言葉）は `.env.local` に初期値として設定されています。
+**一度でも管理画面（`/admin`）の「パスワードを変更」から変更すると、以降はSupabase上の
+`admin_settings` テーブルの値が優先され、`.env.local` の値は使われなくなります。**
+つまり、日々の運用でパスワードを変えたい場合は `.env.local` やVercelの環境変数を
+触る必要はなく、管理画面から変更するだけで済みます。
 
 ## この後の流れ
 

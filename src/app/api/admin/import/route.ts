@@ -69,7 +69,7 @@ function toTestItemRecord(row: TestItemRow) {
 
 export async function POST(request: Request) {
   const passcode = request.headers.get("x-admin-passcode");
-  if (!checkAdminPasscode(passcode)) {
+  if (!(await checkAdminPasscode(passcode))) {
     return NextResponse.json({ error: "認証エラー" }, { status: 401 });
   }
 

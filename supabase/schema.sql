@@ -61,11 +61,26 @@ create table if not exists import_logs (
 comment on table import_logs is 'CSVインポート操作の監査ログ（いつ・誰が・何件更新したか）。';
 
 -- ============================================================
+-- 管理画面のパスワード（合言葉）。管理画面から変更できるようにするため、
+-- .env.local の環境変数ではなくDBに保存する。パスワードそのものではなく
+-- ハッシュ値のみ保存し、anonキーからは一切読めない設計にする。
+-- ============================================================
+create table if not exists admin_settings (
+  id boolean primary key default true,
+  passcode_hash text not null,
+  updated_at timestamptz not null default now(),
+  constraint admin_settings_single_row check (id)
+);
+
+comment on table admin_settings is '管理画面の合言葉（ハッシュ値のみ）。常に1行だけ存在する。';
+
+-- ============================================================
 -- Row Level Security（閲覧はどこからでも可、書き込みはサーバー側のみ）
 -- ============================================================
 alter table containers enable row level security;
 alter table test_items enable row level security;
 alter table import_logs enable row level security;
+alter table admin_settings enable row level security;
 
 -- フロント（anonキー）からは読み取りのみ許可する。
 -- 書き込みは管理画面のAPI（service_roleキーを使うサーバー側処理、フェーズ2で実装）のみが行う。
@@ -77,4 +92,5 @@ drop policy if exists "test_items_select_anon" on test_items;
 create policy "test_items_select_anon" on test_items
   for select using (true);
 
--- import_logs は閲覧側には公開しない（管理画面のみが参照する想定のため、anon向けpolicyは作らない）
+-- import_logs・admin_settings は閲覧側には公開しない
+-- （管理画面のサーバー側処理のみが参照する想定のため、anon向けpolicyは作らない）

@@ -3,7 +3,7 @@
 看護師が採血・採取時に「どの容器を使うか」「採取量」「払い出し場所」「注意事項」を
 スマートフォンで即座に確認できるシステムです。
 
-現在のフェーズ: **フェーズ4（PWA化）完了**
+現在のフェーズ: **フェーズ5（QRコード配布）完了**
 
 ## 今できること
 
@@ -16,20 +16,19 @@
   - `GET /api/containers`（容器一覧）
   - `GET /api/containers/[code]`（容器コード指定の詳細）
   - `GET /api/test-items`（検査項目一覧）
-- 管理画面 `/admin`（合言葉によるアクセス制限つき）
+- 管理画面 `/admin`（合言葉によるアクセス制限つき。**合言葉は管理画面から自由に変更できます**）
   - 容器マスタCSV・検査項目マスタCSVのアップロード（取り込みのたびに `import_logs` に記録）
   - 容器写真のアップロード（Supabaseストレージへ保存し、`containers.image_url` を自動更新）
   - 容器マスタの簡易一覧表示
-- **看護師が使う画面（3つの導線）**
+  - パスワード変更フォーム（DB（`admin_settings`）にハッシュ値のみ保存。変更後はVercelの
+    環境変数を触らなくてもすぐ反映されます）
+- **看護師が使う画面（3つの導線・現在は認証なしで誰でも閲覧可）**
   - `/scan`: スマホカメラでバーコードを読み取り、容器詳細へ自動遷移
     （カメラが使えない場合は12桁を直接入力する欄も用意）
   - `/containers`: 容器一覧から検索して選ぶ
   - `/search`: 検査項目名で検索して、対応する容器の詳細へ遷移
   - `/containers/[code]`: 3つの導線から共通で使う詳細画面
     （容器写真・採取量・払い出し場所・注意事項・採取指示・問い合わせ先を大きな文字で表示）
-- **サイト全体にBasic認証**（`src/proxy.ts`）。ユーザー名は固定で `acliss`、
-  パスワードは合言葉（`VIEWER_PASSCODE`）。管理画面にはさらに別の合言葉
-  （`ADMIN_PASSCODE`）が必要な二重構成です。
 - 検索エンジンにインデックスされないよう `robots.txt` で全ページを非公開に設定済み。
 - **PWA対応**
   - スマホのホーム画面に追加できます（アイコン・アプリ名を設定済み。
@@ -38,13 +37,14 @@
     通信が不安定でも直近のデータで表示を続けられます
   - `/containers`・`/search`画面では「最終更新: ◯月◯日」を表示し、
     オフライン時はその旨が分かるようにしています
+- **QRコード配布**（`scripts/generate-qr.mjs`）。固定URLのQRコードと、院内掲示用の
+  印刷ポスターを生成できます。
 
-## ディレクトリ構成（フェーズ4時点）
+## ディレクトリ構成（フェーズ5時点）
 
 ```
 ACLiSS/
 ├── src/
-│   ├── proxy.ts             サイト全体へのBasic認証（VIEWER_PASSCODE）
 │   ├── app/
 │   │   ├── layout.tsx       共通レイアウト（ヘッダー・PWAメタ情報など）
 │   │   ├── page.tsx         トップページ（3つの導線ボタン）
@@ -55,14 +55,15 @@ ACLiSS/
 │   │   ├── containers/page.tsx      容器一覧・検索画面
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
 │   │   ├── search/page.tsx          検査項目検索画面
-│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・一覧）
+│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・一覧・パスワード変更）
 │   │   └── api/
 │   │       ├── containers/route.ts          GET 容器一覧
 │   │       ├── containers/[code]/route.ts   GET 容器詳細
 │   │       ├── test-items/route.ts          GET 検査項目一覧
 │   │       └── admin/
 │   │           ├── import/route.ts          POST CSV取り込み（合言葉必須）
-│   │           └── upload-image/route.ts    POST 容器写真アップロード（合言葉必須）
+│   │           ├── upload-image/route.ts    POST 容器写真アップロード（合言葉必須）
+│   │           └── change-passcode/route.ts POST 管理画面の合言葉を変更（合言葉必須）
 │   ├── components/
 │   │   ├── ContainerDetail.tsx        容器詳細の共通表示コンポーネント
 │   │   ├── UpdatedAtNotice.tsx        「最終更新: ◯月◯日」表示
@@ -72,15 +73,17 @@ ACLiSS/
 │       │                      ※将来、院内イントラに移設する際もこのファイルの中身は変えず、
 │       │                        環境変数（.env.local）の値だけ差し替えればよい設計です
 │       ├── supabase.ts        Supabaseクライアント（閲覧側・読み取り専用）
-│       ├── supabase-admin.ts  Supabaseクライアント（管理画面専用・書き込み権限あり）
+│       ├── supabase-admin.ts  Supabaseクライアント（管理画面専用・書き込み権限あり・合言葉照合）
 │       ├── useMasterData.ts   容器・検査項目一覧を取得し、localStorageにもキャッシュするフック
 │       ├── barcode.ts         バーコード12桁 → 容器コード3桁 変換ロジック
 │       └── types.ts           Container / TestItem の型定義
 ├── public/
 │   ├── sw.js               Service Worker本体
 │   └── icons/               PWAアイコン（現在は仮デザイン）
+├── scripts/
+│   └── generate-qr.mjs     QRコード・院内掲示用ポスター生成スクリプト
 ├── supabase/
-│   ├── schema.sql        容器マスタ・検査項目マスタ・操作ログのテーブル定義
+│   ├── schema.sql        容器マスタ・検査項目マスタ・操作ログ・管理画面パスワードのテーブル定義
 │   └── README.md         Supabaseプロジェクト作成手順（依頼者向け）
 ├── docs/
 │   ├── security-overview.md    情報セキュリティ部門向け説明メモ
@@ -102,15 +105,27 @@ HTTPS環境でのみ動作するため、Vercel等の本番URLで確認してく
 
 ## 今の宿題（依頼者側の作業）
 
-1. デプロイ後のサイトをiPad/iPhoneのSafariで開き、共有ボタン→「ホーム画面に追加」で
+1. Supabaseの「SQL Editor」で `supabase/schema.sql` を再実行してください
+   （`admin_settings`テーブルが追加されました。既存部分は再実行しても壊れません）。
+2. 管理画面（`/admin`）で一度パスワードを確認・変更してみてください
+   （初期パスワードは `.env.local` の `ADMIN_PASSCODE` の値です）。
+3. デプロイ後のサイトをiPad/iPhoneのSafariで開き、共有ボタン→「ホーム画面に追加」で
    ホーム画面にアイコンが追加できるか確認してください（アイコンは仮デザインです）。
-2. 実際の「ACLiSSマスタ.xlsx」と容器写真一式を、準備でき次第共有いただければ、
+4. 実際の「ACLiSSマスタ.xlsx」と容器写真一式を、準備でき次第共有いただければ、
    Excel→CSV変換の手順もご案内します（まだで大丈夫です）。
-3. 正式なロゴ画像を共有いただければ、PWAアイコン・ヘッダーに反映します。
+5. 正式なロゴ画像を共有いただければ、PWAアイコン・ヘッダーに反映します。
 
-## 今後の予定（フェーズ5以降）
+## QRコードの生成方法
 
-1. QRコードでの配布（固定URLをQRコード化）
-2. 運用テスト（iPadでの表示確認、CSV更新→反映の一連の流れの確認）
+```bash
+node scripts/generate-qr.mjs
+```
+
+`qr-output/acliss-qr.png`（QRコード単体）と `qr-output/acliss-poster.png`
+（院内掲示・印刷用のポスター）が作成されます。このフォルダはGit管理対象外です。
+
+## 今後の予定（フェーズ6）
+
+運用テスト（iPadでの表示確認、CSV更新→反映の一連の流れの確認、依頼者による内容の最終レビュー）
 
 各フェーズが終わるごとに、動作確認と簡単な説明を挟みながら進めます。

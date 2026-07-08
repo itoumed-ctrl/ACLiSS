@@ -46,10 +46,21 @@ export default function AdminPage() {
     );
   }
 
-  return <AdminDashboard passcode={passcode} />;
+  function handlePasscodeChange(newPasscode: string) {
+    sessionStorage.setItem(PASSCODE_STORAGE_KEY, newPasscode);
+    setPasscode(newPasscode);
+  }
+
+  return <AdminDashboard passcode={passcode} onPasscodeChange={handlePasscodeChange} />;
 }
 
-function AdminDashboard({ passcode }: { passcode: string }) {
+function AdminDashboard({
+  passcode,
+  onPasscodeChange,
+}: {
+  passcode: string;
+  onPasscodeChange: (newPasscode: string) => void;
+}) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8">
       <h1 className="text-xl font-bold text-navy">ACLiSS 管理画面</h1>
@@ -65,6 +76,7 @@ function AdminDashboard({ passcode }: { passcode: string }) {
       />
       <ImageUploadForm passcode={passcode} />
       <ContainerList />
+      <ChangePasscodeForm passcode={passcode} onPasscodeChange={onPasscodeChange} />
     </div>
   );
 }
@@ -261,5 +273,92 @@ function ContainerList() {
         </div>
       )}
     </div>
+  );
+}
+
+function ChangePasscodeForm({
+  passcode,
+  onPasscodeChange,
+}: {
+  passcode: string;
+  onPasscodeChange: (newPasscode: string) => void;
+}) {
+  const [newPasscode, setNewPasscode] = useState("");
+  const [confirmPasscode, setConfirmPasscode] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus(null);
+
+    if (newPasscode.length < 4) {
+      setStatus("エラー: 新しいパスワードは4文字以上にしてください");
+      return;
+    }
+    if (newPasscode !== confirmPasscode) {
+      setStatus("エラー: 確認用のパスワードが一致しません");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/change-passcode", {
+        method: "POST",
+        headers: {
+          "x-admin-passcode": passcode,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newPasscode }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setStatus(`エラー: ${json.error ?? "変更に失敗しました"}`);
+      } else {
+        onPasscodeChange(newPasscode);
+        setNewPasscode("");
+        setConfirmPasscode("");
+        setStatus("パスワードを変更しました");
+      }
+    } catch {
+      setStatus("通信エラーが発生しました");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4"
+    >
+      <h2 className="font-semibold text-navy">管理画面のパスワードを変更</h2>
+      <label className="text-sm">
+        新しいパスワード
+        <input
+          type="password"
+          value={newPasscode}
+          onChange={(e) => setNewPasscode(e.target.value)}
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2"
+        />
+      </label>
+      <label className="text-sm">
+        新しいパスワード（確認）
+        <input
+          type="password"
+          value={confirmPasscode}
+          onChange={(e) => setConfirmPasscode(e.target.value)}
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2"
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={!newPasscode || !confirmPasscode || busy}
+        className="self-start rounded bg-navy px-4 py-2 font-semibold text-white disabled:opacity-50"
+      >
+        {busy ? "変更中..." : "変更する"}
+      </button>
+      {status && <p className="text-sm">{status}</p>}
+    </form>
   );
 }
