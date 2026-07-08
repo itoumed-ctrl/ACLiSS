@@ -20,6 +20,13 @@ export default function Home() {
         title="検査項目から探す"
         description="検査項目名で検索します"
       />
+
+      <Link
+        href="/admin"
+        className="mt-6 self-center text-sm text-foreground/50 underline"
+      >
+        管理者はこちら
+      </Link>
     </div>
   );
 }
