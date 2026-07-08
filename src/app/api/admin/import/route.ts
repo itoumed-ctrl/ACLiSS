@@ -76,16 +76,24 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const type = formData.get("type");
   const file = formData.get("file");
+  const csvText = formData.get("csvText");
   const importedBy = formData.get("importedBy");
 
-  if (
-    (type !== "containers" && type !== "test_items") ||
-    !(file instanceof File)
-  ) {
+  if (type !== "containers" && type !== "test_items") {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
   }
 
-  const text = await file.text();
+  let text: string;
+  let sourceFileName: string;
+  if (file instanceof File) {
+    text = await file.text();
+    sourceFileName = file.name;
+  } else if (typeof csvText === "string" && csvText.trim()) {
+    text = csvText;
+    sourceFileName = "貼り付けたテキスト";
+  } else {
+    return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
+  }
   const parsed = Papa.parse<ContainerRow & TestItemRow>(text, {
     header: true,
     skipEmptyLines: true,
@@ -123,7 +131,7 @@ export async function POST(request: Request) {
 
     await supabaseAdmin.from("import_logs").insert({
       imported_by: typeof importedBy === "string" ? importedBy : null,
-      source_file_name: file.name,
+      source_file_name: sourceFileName,
       containers_count: records.length,
       test_items_count: 0,
       note: "containers CSV import",
@@ -146,7 +154,7 @@ export async function POST(request: Request) {
 
   await supabaseAdmin.from("import_logs").insert({
     imported_by: typeof importedBy === "string" ? importedBy : null,
-    source_file_name: file.name,
+    source_file_name: sourceFileName,
     containers_count: 0,
     test_items_count: records.length,
     note: "test_items CSV import",

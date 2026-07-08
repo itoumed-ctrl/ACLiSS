@@ -91,19 +91,24 @@ function ImportForm({
   passcode: string;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [csvText, setCsvText] = useState("");
   const [importedBy, setImportedBy] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (!file && !csvText.trim()) return;
     setBusy(true);
     setStatus(null);
 
     const formData = new FormData();
     formData.set("type", type);
-    formData.set("file", file);
+    if (file) {
+      formData.set("file", file);
+    } else {
+      formData.set("csvText", csvText);
+    }
     formData.set("importedBy", importedBy);
 
     try {
@@ -137,6 +142,16 @@ function ImportForm({
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
       />
       <label className="text-sm">
+        またはCSVの内容をここに貼り付け
+        <textarea
+          value={csvText}
+          onChange={(e) => setCsvText(e.target.value)}
+          rows={4}
+          placeholder="1行目に列名、2行目以降にデータを貼り付けてください"
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2 font-mono text-xs"
+        />
+      </label>
+      <label className="text-sm">
         実行者名（任意、記録用）
         <input
           type="text"
@@ -147,7 +162,7 @@ function ImportForm({
       </label>
       <button
         type="submit"
-        disabled={!file || busy}
+        disabled={(!file && !csvText.trim()) || busy}
         className="self-start rounded bg-navy px-4 py-2 font-semibold text-white disabled:opacity-50"
       >
         {busy ? "取り込み中..." : "取り込む"}
