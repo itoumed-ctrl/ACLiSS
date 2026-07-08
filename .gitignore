@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# QRコードポスター出力（合言葉が画像に写り込むためGit管理対象外にする）
+/qr-output
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
