@@ -8,7 +8,7 @@ import { extractContainerCodeFromBarcode } from "@/lib/barcode";
 import { BackNav } from "@/components/BackNav";
 
 // 検査バーコードは1次元バーコード。よく使われる形式に絞ると精度・速度が上がる。
-const HINTS = new Map<DecodeHintType, unknown>([
+const ZXING_HINTS = new Map<DecodeHintType, unknown>([
   [
     DecodeHintType.POSSIBLE_FORMATS,
     [
@@ -22,7 +22,7 @@ const HINTS = new Map<DecodeHintType, unknown>([
   [DecodeHintType.TRY_HARDER, true],
 ]);
 
-type ScanStatus = "initializing" | "scanning" | "success";
+const NATIVE_FORMATS = ["code_128", "itf", "code_39", "codabar", "ean_13"];
 
 // カメラの解像度が低いと特に1次元バーコードが読み取りにくいため、
 // 高めの解像度と連続オートフォーカスを希望する（対応していない端末は無視される）。
@@ -33,11 +33,14 @@ const VIDEO_CONSTRAINTS: MediaTrackConstraints = {
   advanced: [{ focusMode: "continuous" } as unknown as MediaTrackConstraintSet],
 };
 
+type ScanStatus = "initializing" | "scanning" | "success";
+type ScanEngine = "native" | "zxing" | null;
+
 export default function ScanPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const controlsRef = useRef<import("@zxing/browser").IScannerControls | null>(null);
   const [status, setStatus] = useState<ScanStatus>("initializing");
+  const [engine, setEngine] = useState<ScanEngine>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualInput, setManualInput] = useState("");
   const [formatError, setFormatError] = useState<string | null>(null);
@@ -45,58 +48,153 @@ export default function ScanPage() {
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
 
-  useEffect(() => {
-    const codeReader = new BrowserMultiFormatReader(HINTS);
-    let cancelled = false;
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+  const zxingControlsRef = useRef<import("@zxing/browser").IScannerControls | null>(null);
 
-    codeReader
-      .decodeFromConstraints(
+  useEffect(() => {
+    let cancelled = false;
+    let found = false;
+    const cleanupFns: Array<() => void> = [];
+
+    function handleDetected(raw: string) {
+      if (cancelled || found) return;
+      setLastScanned((prev) => (prev === raw ? prev : raw));
+      const code = extractContainerCodeFromBarcode(raw);
+      if (code) {
+        found = true;
+        cleanupFns.forEach((fn) => fn());
+        setStatus("success");
+        setTimeout(() => router.push(`/containers/${code}`), 400);
+      }
+    }
+
+    function checkTorchSupport(track: MediaStreamTrack) {
+      try {
+        const capabilities = track.getCapabilities?.();
+        if (capabilities && "torch" in capabilities) {
+          trackRef.current = track;
+          setTorchSupported(true);
+        }
+      } catch {
+        // 対応確認に失敗しても致命的ではないので無視する
+      }
+    }
+
+    async function startNative(): Promise<boolean> {
+      if (typeof window === "undefined" || !("BarcodeDetector" in window)) {
+        return false;
+      }
+      const supported = await BarcodeDetector.getSupportedFormats().catch(
+        (): string[] => [],
+      );
+      const formats = NATIVE_FORMATS.filter((f) => supported.includes(f));
+      if (formats.length === 0) return false;
+
+      const detector = new BarcodeDetector({ formats });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS });
+      if (cancelled) {
+        stream.getTracks().forEach((t) => t.stop());
+        return true;
+      }
+
+      const video = videoRef.current;
+      if (!video) {
+        stream.getTracks().forEach((t) => t.stop());
+        return false;
+      }
+      video.srcObject = stream;
+      await video.play();
+      checkTorchSupport(stream.getVideoTracks()[0]);
+
+      setEngine("native");
+      setStatus("scanning");
+
+      let rafId = 0;
+      let busy = false;
+      const tick = () => {
+        if (cancelled) return;
+        if (!busy && video.readyState >= 2) {
+          busy = true;
+          detector
+            .detect(video)
+            .then((barcodes) => {
+              if (barcodes.length > 0) handleDetected(barcodes[0].rawValue);
+            })
+            .catch(() => {
+              // 1フレームの検出失敗は無視して次に進む
+            })
+            .finally(() => {
+              busy = false;
+            });
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+
+      cleanupFns.push(() => {
+        cancelAnimationFrame(rafId);
+        stream.getTracks().forEach((t) => t.stop());
+      });
+      return true;
+    }
+
+    async function startZxing() {
+      const codeReader = new BrowserMultiFormatReader(ZXING_HINTS);
+      const controls = await codeReader.decodeFromConstraints(
         { video: VIDEO_CONSTRAINTS },
         videoRef.current!,
         (result) => {
-          if (cancelled || !result) return;
-          const raw = result.getText();
-          setLastScanned(raw);
-          const code = extractContainerCodeFromBarcode(raw);
-          if (code) {
-            cancelled = true;
-            controlsRef.current?.stop();
-            setStatus("success");
-            setTimeout(() => router.push(`/containers/${code}`), 400);
-          }
+          if (result) handleDetected(result.getText());
         },
-      )
-      .then((c) => {
-        controlsRef.current = c;
-        if (cancelled) return;
-        setStatus("scanning");
-        try {
-          const capabilities = c.streamVideoCapabilitiesGet?.((track) => [track]);
-          if (capabilities && "torch" in capabilities) {
-            setTorchSupported(true);
-          }
-        } catch {
-          // トーチ対応の確認に失敗しても致命的ではないので無視する
+      );
+      if (cancelled) {
+        controls.stop();
+        return;
+      }
+      zxingControlsRef.current = controls;
+      setEngine("zxing");
+      setStatus("scanning");
+      try {
+        const capabilities = controls.streamVideoCapabilitiesGet?.((track) => [track]);
+        if (capabilities && "torch" in capabilities) {
+          setTorchSupported(true);
         }
+      } catch {
+        // 対応確認に失敗しても致命的ではないので無視する
+      }
+      cleanupFns.push(() => controls.stop());
+    }
+
+    startNative()
+      .then((started) => {
+        if (!started && !cancelled) return startZxing();
       })
       .catch((e) => {
-        setCameraError(
-          e instanceof Error
-            ? e.message
-            : "カメラを起動できませんでした。カメラの利用を許可してください。",
-        );
+        if (!cancelled) {
+          setCameraError(
+            e instanceof Error
+              ? e.message
+              : "カメラを起動できませんでした。カメラの利用を許可してください。",
+          );
+        }
       });
 
     return () => {
       cancelled = true;
-      controlsRef.current?.stop();
+      cleanupFns.forEach((fn) => fn());
     };
   }, [router]);
 
   async function toggleTorch() {
     const next = !torchOn;
     try {
-      await controlsRef.current?.switchTorch?.(next);
+      if (engine === "native" && trackRef.current) {
+        await trackRef.current.applyConstraints({
+          advanced: [{ torch: next } as unknown as MediaTrackConstraintSet],
+        });
+      } else if (engine === "zxing") {
+        await zxingControlsRef.current?.switchTorch?.(next);
+      }
       setTorchOn(next);
     } catch {
       // 端末が対応していない場合は何もしない
@@ -130,6 +228,9 @@ export default function ScanPage() {
             muted
             playsInline
           />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-1/3 w-4/5 rounded-lg border-2 border-gold/80" />
+          </div>
           <div className="absolute left-0 right-0 top-2 flex justify-center">
             <StatusBadge status={status} />
           </div>
@@ -145,6 +246,12 @@ export default function ScanPage() {
             </button>
           )}
         </div>
+      )}
+
+      {!cameraError && status === "scanning" && (
+        <p className="mb-4 text-center text-sm text-foreground/60">
+          枠の中にバーコードを収めてください
+        </p>
       )}
 
       {cameraError && (
