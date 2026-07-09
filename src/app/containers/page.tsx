@@ -31,7 +31,7 @@ export default function ContainersListPage() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="容器コード・容器の種類・検査項目などで検索"
+        placeholder="ラベル右下の3桁番号を入力"
         className="mb-4 w-full rounded border border-navy/30 px-3 py-3 text-lg"
       />
 
