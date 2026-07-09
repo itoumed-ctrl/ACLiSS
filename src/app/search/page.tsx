@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMasterData } from "@/lib/useMasterData";
 import { UpdatedAtNotice } from "@/components/UpdatedAtNotice";
 import { normalizeForSearch } from "@/lib/normalize";
@@ -10,8 +11,30 @@ import type { Container, TestItem } from "@/lib/types";
 import { BackNav } from "@/components/BackNav";
 
 export default function TestItemSearchPage() {
+  return (
+    <Suspense>
+      <TestItemSearchPageInner />
+    </Suspense>
+  );
+}
+
+function TestItemSearchPageInner() {
   const { containers, testItems, updatedAt, loading, error, isOffline } = useMasterData();
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // 検索語をURLにも保持し、詳細画面から戻ってきたときに検索語が消えないようにする。
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("q", value);
+    } else {
+      params.delete("q");
+    }
+    router.replace(`/search?${params.toString()}`, { scroll: false });
+  }
 
   const containersByCode = useMemo(() => {
     const map = new Map(containers.map((c) => [c.container_code, c]));
@@ -34,7 +57,7 @@ export default function TestItemSearchPage() {
       <input
         type="text"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => handleQueryChange(e.target.value)}
         placeholder="検査項目名を入力（例: グルコース）"
         className="mb-4 w-full rounded border border-navy/30 px-3 py-3 text-lg"
         autoFocus
