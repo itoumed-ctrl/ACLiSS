@@ -31,26 +31,38 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
+  try {
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(BUCKET)
+      .upload(path, file, { upsert: true, contentType: file.type });
 
-  if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    if (uploadError) {
+      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(BUCKET)
+      .getPublicUrl(path);
+
+    const { error: updateError } = await supabaseAdmin
+      .from("containers")
+      .update({ image_url: publicUrlData.publicUrl })
+      .eq("container_code", code);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ imageUrl: publicUrlData.publicUrl });
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      {
+        error:
+          "Supabaseへの接続に失敗しました。Vercelの環境変数（特にSUPABASE_SERVICE_ROLE_KEY）が正しく設定されているか確認してください。詳細: " +
+          detail,
+      },
+      { status: 500 },
+    );
   }
-
-  const { data: publicUrlData } = supabaseAdmin.storage
-    .from(BUCKET)
-    .getPublicUrl(path);
-
-  const { error: updateError } = await supabaseAdmin
-    .from("containers")
-    .update({ image_url: publicUrlData.publicUrl })
-    .eq("container_code", code);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ imageUrl: publicUrlData.publicUrl });
 }
