@@ -1,13 +1,14 @@
 /**
- * 検索用の文字列正規化。全角英数字・記号を半角に変換し、小文字化する。
- * マスタデータには「ＡＳＴ」のように全角で入力されている項目名があるため、
- * 検索時に半角/全角の違いを気にしなくてよいようにする。
+ * 検索用の文字列正規化。
+ * - 全角英数字・半角カタカナなどを標準形に統一（NFKC正規化）
+ *   例: 「ＡＳＴ」→「AST」、「ﾑﾗｻｷ」→「ムラサキ」
+ * - カタカナをひらがなに統一し、ひらがな・カタカナの違いを気にせず検索できるようにする
+ * - 小文字化してアルファベットの大文字・小文字の違いも吸収する
  */
 export function normalizeForSearch(value: string): string {
   return value
-    .replace(/[！-～]/g, (c) =>
-      String.fromCharCode(c.charCodeAt(0) - 0xfee0),
-    )
+    .normalize("NFKC")
+    .replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
     .replace(/　/g, " ")
     .toLowerCase();
 }
