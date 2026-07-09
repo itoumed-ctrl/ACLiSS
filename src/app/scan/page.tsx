@@ -4,7 +4,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { extractContainerCodeFromBarcode } from "@/lib/barcode";
+
+// 検査バーコードは1次元バーコード。よく使われる形式に絞ると精度・速度が上がる。
+const HINTS = new Map<DecodeHintType, unknown>([
+  [
+    DecodeHintType.POSSIBLE_FORMATS,
+    [
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.ITF,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.CODABAR,
+      BarcodeFormat.EAN_13,
+    ],
+  ],
+  [DecodeHintType.TRY_HARDER, true],
+]);
 
 export default function ScanPage() {
   const router = useRouter();
@@ -12,9 +28,10 @@ export default function ScanPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualInput, setManualInput] = useState("");
   const [formatError, setFormatError] = useState<string | null>(null);
+  const [lastScanned, setLastScanned] = useState<string | null>(null);
 
   useEffect(() => {
-    const codeReader = new BrowserMultiFormatReader();
+    const codeReader = new BrowserMultiFormatReader(HINTS);
     let cancelled = false;
     let controls: { stop: () => void } | null = null;
 
@@ -24,7 +41,9 @@ export default function ScanPage() {
         videoRef.current!,
         (result) => {
           if (cancelled || !result) return;
-          const code = extractContainerCodeFromBarcode(result.getText());
+          const raw = result.getText();
+          setLastScanned(raw);
+          const code = extractContainerCodeFromBarcode(raw);
           if (code) {
             cancelled = true;
             controls?.stop();
@@ -82,6 +101,14 @@ export default function ScanPage() {
           カメラを利用できません: {cameraError}
           <br />
           下の欄にバーコードの12桁の数字を直接入力してください。
+        </p>
+      )}
+
+      {lastScanned && (
+        <p className="mb-4 rounded-lg bg-navy/5 p-3 text-sm text-navy">
+          読み取った内容: <span className="font-mono">{lastScanned}</span>
+          <br />
+          12桁の数字として認識できなかったため、容器コードへ変換できませんでした。
         </p>
       )}
 
