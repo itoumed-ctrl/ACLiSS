@@ -199,7 +199,12 @@ function ImageUploadForm({ passcode }: { passcode: string }) {
       if (!res.ok) {
         setStatus(`エラー: ${json.error ?? "アップロードに失敗しました"}`);
       } else {
-        setStatus("アップロードしました");
+        const codes: string[] = json.updatedContainerCodes ?? [];
+        setStatus(
+          codes.length > 1
+            ? `アップロードしました（同じ写真を使う${codes.length}件の容器に反映: ${codes.join("、")}）`
+            : "アップロードしました",
+        );
       }
     } catch {
       setStatus("通信エラーが発生しました");
@@ -214,6 +219,10 @@ function ImageUploadForm({ passcode }: { passcode: string }) {
       className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4"
     >
       <h2 className="font-semibold text-navy">容器写真のアップロード</h2>
+      <p className="text-sm text-foreground/70">
+        同じ写真を複数の容器コードで使い回している場合、マスタの設定に従って
+        自動的にまとめて反映されます。
+      </p>
       <label className="text-sm">
         容器コード（3桁）
         <input
@@ -246,6 +255,7 @@ type BulkUploadResult = {
   containerCode: string;
   status: "success" | "error";
   message?: string;
+  reflectedCount?: number;
 };
 
 function BulkImageUploadForm({ passcode }: { passcode: string }) {
@@ -285,7 +295,8 @@ function BulkImageUploadForm({ passcode }: { passcode: string }) {
             message: json.error ?? "アップロードに失敗しました",
           });
         } else {
-          newResults.push({ fileName: file.name, containerCode, status: "success" });
+          const reflectedCount: number = json.updatedContainerCodes?.length ?? 1;
+          newResults.push({ fileName: file.name, containerCode, status: "success", reflectedCount });
         }
       } catch {
         newResults.push({
@@ -305,6 +316,9 @@ function BulkImageUploadForm({ passcode }: { passcode: string }) {
 
   const successCount = results?.filter((r) => r.status === "success").length ?? 0;
   const failures = results?.filter((r) => r.status === "error") ?? [];
+  const totalReflected = results
+    ?.filter((r) => r.status === "success")
+    .reduce((sum, r) => sum + (r.reflectedCount ?? 1), 0);
 
   return (
     <form
@@ -314,7 +328,7 @@ function BulkImageUploadForm({ passcode }: { passcode: string }) {
       <h2 className="font-semibold text-navy">容器写真のまとめてアップロード</h2>
       <p className="text-sm text-foreground/70">
         ファイル名を容器コードにしてください（例: 「073.png」→ 容器コード073）。
-        複数選択できます。
+        複数選択できます。同じ写真を使い回している容器コードには自動的に反映されます。
       </p>
       <input
         type="file"
@@ -337,6 +351,9 @@ function BulkImageUploadForm({ passcode }: { passcode: string }) {
         <div className="text-sm">
           <p>
             成功: {successCount}件 / 失敗: {failures.length}件
+            {typeof totalReflected === "number" && totalReflected > successCount && (
+              <>（使い回しを含め、容器マスタ{totalReflected}件に反映）</>
+            )}
           </p>
           {failures.length > 0 && (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-red-600">

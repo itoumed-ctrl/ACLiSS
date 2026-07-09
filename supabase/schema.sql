@@ -23,12 +23,19 @@ create table if not exists containers (
   instruction_3 text,
   notes text,                                -- 一般的な注意事項
   image_path_raw text,                       -- 元データの院内共有フォルダパス（参考用、表示には使わない）
+  image_source_code text,                    -- 実際に表示する画像を持つ容器コード（写真の使い回し先。
+                                              -- 自分自身のコードと同じ場合は自分の写真を使う）
   image_url text,                            -- Supabaseストレージ上の容器写真URL（移行後に設定）
   updated_at timestamptz not null default now()
 );
 
+-- 既存テーブルに対しては create table if not exists が効かないため、
+-- 列追加は別途ここで行う（何度実行しても壊れない）。
+alter table containers add column if not exists image_source_code text;
+
 comment on table containers is '容器マスタ。患者個人情報・要配慮個人情報は一切含めない。';
 comment on column containers.collection_amount is 'Excel上で "----" だったものは「規定なし」という文字列として保存する';
+comment on column containers.image_source_code is '写真が使い回されている場合、実際の画像ファイルを持つ容器コード';
 
 -- ============================================================
 -- 検査項目マスタ（Excel「オーダ可能項目シート」に対応、約1,740件）

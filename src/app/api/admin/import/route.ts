@@ -20,6 +20,7 @@ type ContainerRow = {
   instruction_3?: string;
   notes?: string;
   image_path_raw?: string;
+  image_source_code?: string;
 };
 
 type TestItemRow = {
@@ -53,6 +54,7 @@ function toContainerRecord(row: ContainerRow) {
     instruction_3: row.instruction_3?.trim() || null,
     notes: row.notes?.trim() || null,
     image_path_raw: row.image_path_raw?.trim() || null,
+    image_source_code: row.image_source_code?.trim() || null,
   };
 }
 

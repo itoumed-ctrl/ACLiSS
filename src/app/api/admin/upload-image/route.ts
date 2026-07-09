@@ -44,10 +44,15 @@ export async function POST(request: Request) {
       .from(BUCKET)
       .getPublicUrl(path);
 
+    // 同じ写真を使い回している容器（image_source_code が一致する行）にも
+    // まとめて反映する。マスタ未取り込みで image_source_code が空の場合は、
+    // container_code が一致する自分自身の行にだけ反映する（従来どおりの挙動）。
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("containers")
       .update({ image_url: publicUrlData.publicUrl })
-      .eq("container_code", code)
+      .or(
+        `image_source_code.eq.${code},and(image_source_code.is.null,container_code.eq.${code})`,
+      )
       .select("container_code");
 
     if (updateError) {
@@ -60,7 +65,10 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ imageUrl: publicUrlData.publicUrl });
+    return NextResponse.json({
+      imageUrl: publicUrlData.publicUrl,
+      updatedContainerCodes: updated.map((r) => r.container_code),
+    });
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     return NextResponse.json(

@@ -9,6 +9,7 @@ ACLiSSマスタ.xlsx（材料シート・オーダ可能項目シート）を、
 """
 
 import csv
+import re
 import sys
 from pathlib import Path
 
@@ -38,6 +39,7 @@ def convert_containers(xlsx_path: Path, out_path: Path) -> int:
         "instruction_3",
         "notes",
         "image_path_raw",
+        "image_source_code",
     ]
 
     count = 0
@@ -54,6 +56,15 @@ def convert_containers(xlsx_path: Path, out_path: Path) -> int:
             # 指示有無(列11)は入力ミスの値が混在していることがあるため使わず、
             # 実際に指示文が入っているかどうかで判定する。
             has_instruction = "1" if (instruction_1 or instruction_2 or instruction_3) else "0"
+
+            # 「画像パス」列（列16）の末尾のファイル名が、実際に表示すべき画像を
+            # 持つ容器コード。写真が複数の容器コードで使い回されていることがあるため、
+            # container_code とは別に記録する（一致しない場合は使い回し）。
+            image_path_raw = r[16] or ""
+            match = re.search(r"([0-9A-Za-z]+)\.[^.\\/]+$", image_path_raw)
+            image_source_code = match.group(1) if match else code
+            if image_source_code.upper() == "NI":  # "No Image" のプレースホルダー
+                image_source_code = ""
 
             writer.writerow(
                 {
@@ -73,11 +84,8 @@ def convert_containers(xlsx_path: Path, out_path: Path) -> int:
                     "instruction_2": instruction_2,
                     "instruction_3": instruction_3,
                     "notes": r[15] or "",
-                    # 列16「画像パス」は一部の行で前後の行の値が誤って
-                    # コピーされている（例: 076行が073.PNGを指す等）。
-                    # 列17（無題・元データの18列目）は全行で container_code.PNG と
-                    # 一致することを確認済みのため、こちらを参照用パスとして採用する。
-                    "image_path_raw": r[17] or "",
+                    "image_path_raw": image_path_raw,
+                    "image_source_code": image_source_code,
                 }
             )
             count += 1
