@@ -27,3 +27,11 @@ export interface TestItem {
   container_code: string | null;
   updated_at: string;
 }
+
+export interface AccessLog {
+  id: number;
+  accessed_at: string;
+  path: string;
+  ip_address: string | null;
+  user_agent: string | null;
+}

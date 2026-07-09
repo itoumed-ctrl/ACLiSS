@@ -40,12 +40,16 @@
     オフライン時はその旨が分かるようにしています
 - **QRコード配布**（`scripts/generate-qr.mjs`）。固定URLのQRコードと、院内掲示用の
   印刷ポスターを生成できます。
+- **アクセスログ**（`src/proxy.ts`）。閲覧側画面・管理画面へのアクセスを日時・IPアドレス・
+  ブラウザ情報とともに記録し、管理画面（`/admin`）から直近200件を確認できます
+  （閲覧側に認証をかけていない分の、不審アクセス確認用）。
 
 ## ディレクトリ構成（フェーズ5時点）
 
 ```
 ACLiSS/
 ├── src/
+│   ├── proxy.ts              アクセスログ記録（画面ブロックはしない）
 │   ├── app/
 │   │   ├── layout.tsx       共通レイアウト（ヘッダー・PWAメタ情報など）
 │   │   ├── page.tsx         トップページ（3つの導線ボタン）
@@ -56,7 +60,7 @@ ACLiSS/
 │   │   ├── containers/page.tsx      容器一覧・検索画面
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
 │   │   ├── search/page.tsx          検査項目検索画面
-│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・一覧・パスワード変更）
+│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・一覧・アクセスログ・パスワード変更）
 │   │   └── api/
 │   │       ├── containers/route.ts          GET 容器一覧
 │   │       ├── containers/[code]/route.ts   GET 容器詳細
@@ -64,7 +68,8 @@ ACLiSS/
 │   │       └── admin/
 │   │           ├── import/route.ts          POST CSV取り込み（合言葉必須）
 │   │           ├── upload-image/route.ts    POST 容器写真アップロード（合言葉必須）
-│   │           └── change-passcode/route.ts POST 管理画面の合言葉を変更（合言葉必須）
+│   │           ├── change-passcode/route.ts POST 管理画面の合言葉を変更（合言葉必須）
+│   │           └── access-logs/route.ts     GET アクセスログ取得（合言葉必須）
 │   ├── components/
 │   │   ├── ContainerDetail.tsx        容器詳細の共通表示コンポーネント
 │   │   ├── UpdatedAtNotice.tsx        「最終更新: ◯月◯日」表示
@@ -107,7 +112,7 @@ HTTPS環境でのみ動作するため、Vercel等の本番URLで確認してく
 ## 今の宿題（依頼者側の作業）
 
 1. Supabaseの「SQL Editor」で `supabase/schema.sql` を再実行してください
-   （`admin_settings`テーブルが追加されました。既存部分は再実行しても壊れません）。
+   （`access_logs`テーブルが追加されました。既存部分は再実行しても壊れません）。
 2. 管理画面（`/admin`）で一度パスワードを確認・変更してみてください
    （初期パスワードは `.env.local` の `ADMIN_PASSCODE` の値です）。
 3. デプロイ後のサイトをiPad/iPhoneのSafariで開き、共有ボタン→「ホーム画面に追加」で

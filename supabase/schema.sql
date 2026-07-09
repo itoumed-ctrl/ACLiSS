@@ -82,12 +82,31 @@ create table if not exists admin_settings (
 comment on table admin_settings is '管理画面の合言葉（ハッシュ値のみ）。常に1行だけ存在する。';
 
 -- ============================================================
+-- 閲覧側画面のアクセスログ（いつ・どのページに・どこから）
+-- 閲覧側に認証をかけていない運用上のトレードオフを補うため、
+-- 不審なアクセスがないか管理画面から確認できるようにする。
+-- ============================================================
+create table if not exists access_logs (
+  id bigint generated always as identity primary key,
+  accessed_at timestamptz not null default now(),
+  path text not null,                        -- アクセスされたページ（例: /containers/121）
+  ip_address text,                           -- アクセス元IPアドレス
+  user_agent text                            -- ブラウザ情報
+);
+
+create index if not exists access_logs_accessed_at_idx
+  on access_logs (accessed_at desc);
+
+comment on table access_logs is '閲覧側画面のアクセスログ。IPアドレスを含むため管理画面以外には公開しない。';
+
+-- ============================================================
 -- Row Level Security（閲覧はどこからでも可、書き込みはサーバー側のみ）
 -- ============================================================
 alter table containers enable row level security;
 alter table test_items enable row level security;
 alter table import_logs enable row level security;
 alter table admin_settings enable row level security;
+alter table access_logs enable row level security;
 
 -- フロント（anonキー）からは読み取りのみ許可する。
 -- 書き込みは管理画面のAPI（service_roleキーを使うサーバー側処理、フェーズ2で実装）のみが行う。
@@ -99,5 +118,5 @@ drop policy if exists "test_items_select_anon" on test_items;
 create policy "test_items_select_anon" on test_items
   for select using (true);
 
--- import_logs・admin_settings は閲覧側には公開しない
+-- import_logs・admin_settings・access_logs は閲覧側には公開しない
 -- （管理画面のサーバー側処理のみが参照する想定のため、anon向けpolicyは作らない）

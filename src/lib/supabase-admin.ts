@@ -59,3 +59,23 @@ export async function changeAdminPasscode(newPasscode: string): Promise<void> {
   });
   if (error) throw error;
 }
+
+/**
+ * 閲覧側画面のアクセスを記録する。ログ記録自体の失敗は画面表示に影響させない。
+ */
+export async function logAccess(entry: {
+  path: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+}): Promise<void> {
+  try {
+    const supabaseAdmin = getSupabaseAdminClient();
+    await supabaseAdmin.from("access_logs").insert({
+      path: entry.path,
+      ip_address: entry.ipAddress,
+      user_agent: entry.userAgent,
+    });
+  } catch {
+    // Supabase未接続時などは記録をスキップする
+  }
+}
