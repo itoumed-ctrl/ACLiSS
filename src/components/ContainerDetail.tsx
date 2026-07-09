@@ -1,12 +1,13 @@
 import type { Container } from "@/lib/types";
+import { containerLabel } from "@/lib/containerLabel";
 
 export function ContainerDetail({ container }: { container: Container }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-baseline gap-3">
+      <div>
         <h1 className="text-3xl font-bold text-navy">{container.container_code}</h1>
-        {container.vessel && (
-          <span className="text-xl text-foreground/80">{container.vessel}</span>
+        {(container.vessel || container.material) && (
+          <p className="text-xl text-foreground/80">{containerLabel(container)}</p>
         )}
       </div>
 
@@ -19,10 +20,6 @@ export function ContainerDetail({ container }: { container: Container }) {
           alt={`容器コード${container.container_code}の写真`}
           className="max-h-80 w-full rounded-lg border border-navy/20 object-contain bg-white"
         />
-      )}
-
-      {container.material && (
-        <p className="text-lg text-foreground/80">{container.material}</p>
       )}
 
       <DetailRow label="採取量" value={container.collection_amount ?? "規定なし"} emphasize />
