@@ -22,9 +22,12 @@ const HINTS = new Map<DecodeHintType, unknown>([
   [DecodeHintType.TRY_HARDER, true],
 ]);
 
+type ScanStatus = "initializing" | "scanning" | "success";
+
 export default function ScanPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [status, setStatus] = useState<ScanStatus>("initializing");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualInput, setManualInput] = useState("");
   const [formatError, setFormatError] = useState<string | null>(null);
@@ -47,12 +50,14 @@ export default function ScanPage() {
           if (code) {
             cancelled = true;
             controls?.stop();
-            router.push(`/containers/${code}`);
+            setStatus("success");
+            setTimeout(() => router.push(`/containers/${code}`), 400);
           }
         },
       )
       .then((c) => {
         controls = c;
+        if (!cancelled) setStatus("scanning");
       })
       .catch((e) => {
         setCameraError(
@@ -88,12 +93,19 @@ export default function ScanPage() {
       <h1 className="mb-4 text-2xl font-bold text-navy">バーコードをスキャン</h1>
 
       {!cameraError && (
-        <video
-          ref={videoRef}
-          className="mb-4 w-full rounded-lg border border-navy/20 bg-black"
-          muted
-          playsInline
-        />
+        <div className="relative mb-4">
+          <video
+            ref={videoRef}
+            className={`w-full rounded-lg border-4 bg-black transition-colors ${
+              status === "success" ? "border-green-500" : "border-navy/20"
+            }`}
+            muted
+            playsInline
+          />
+          <div className="absolute left-0 right-0 top-2 flex justify-center">
+            <StatusBadge status={status} />
+          </div>
+        </div>
       )}
 
       {cameraError && (
@@ -133,5 +145,27 @@ export default function ScanPage() {
       </form>
       {formatError && <p className="mt-2 text-sm text-red-600">{formatError}</p>}
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: ScanStatus }) {
+  if (status === "initializing") {
+    return (
+      <span className="rounded-full bg-black/60 px-3 py-1 text-sm text-white">
+        カメラを起動中...
+      </span>
+    );
+  }
+  if (status === "success") {
+    return (
+      <span className="rounded-full bg-green-600 px-3 py-1 text-sm font-semibold text-white">
+        ✓ 読み取り完了
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-black/60 px-3 py-1 text-sm text-white">
+      スキャン中...
+    </span>
   );
 }
