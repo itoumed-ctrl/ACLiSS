@@ -44,13 +44,20 @@ export async function POST(request: Request) {
       .from(BUCKET)
       .getPublicUrl(path);
 
-    const { error: updateError } = await supabaseAdmin
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from("containers")
       .update({ image_url: publicUrlData.publicUrl })
-      .eq("container_code", code);
+      .eq("container_code", code)
+      .select("container_code");
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    if (!updated || updated.length === 0) {
+      return NextResponse.json(
+        { error: `容器コード "${code}" が容器マスタに見つかりません` },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({ imageUrl: publicUrlData.publicUrl });

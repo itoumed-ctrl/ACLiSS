@@ -75,6 +75,7 @@ function AdminDashboard({
         passcode={passcode}
       />
       <ImageUploadForm passcode={passcode} />
+      <BulkImageUploadForm passcode={passcode} />
       <ContainerList />
       <ChangePasscodeForm passcode={passcode} onPasscodeChange={onPasscodeChange} />
     </div>
@@ -236,6 +237,118 @@ function ImageUploadForm({ passcode }: { passcode: string }) {
         {busy ? "アップロード中..." : "アップロードする"}
       </button>
       {status && <p className="text-sm">{status}</p>}
+    </form>
+  );
+}
+
+type BulkUploadResult = {
+  fileName: string;
+  containerCode: string;
+  status: "success" | "error";
+  message?: string;
+};
+
+function BulkImageUploadForm({ passcode }: { passcode: string }) {
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [doneCount, setDoneCount] = useState(0);
+  const [results, setResults] = useState<BulkUploadResult[] | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (files.length === 0) return;
+    setBusy(true);
+    setDoneCount(0);
+    setResults(null);
+
+    const newResults: BulkUploadResult[] = [];
+
+    for (const file of files) {
+      const containerCode = file.name.replace(/\.[^.]+$/, "").trim();
+
+      const formData = new FormData();
+      formData.set("containerCode", containerCode);
+      formData.set("file", file);
+
+      try {
+        const res = await fetch("/api/admin/upload-image", {
+          method: "POST",
+          headers: { "x-admin-passcode": passcode },
+          body: formData,
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          newResults.push({
+            fileName: file.name,
+            containerCode,
+            status: "error",
+            message: json.error ?? "アップロードに失敗しました",
+          });
+        } else {
+          newResults.push({ fileName: file.name, containerCode, status: "success" });
+        }
+      } catch {
+        newResults.push({
+          fileName: file.name,
+          containerCode,
+          status: "error",
+          message: "通信エラーが発生しました",
+        });
+      }
+
+      setDoneCount((n) => n + 1);
+    }
+
+    setResults(newResults);
+    setBusy(false);
+  }
+
+  const successCount = results?.filter((r) => r.status === "success").length ?? 0;
+  const failures = results?.filter((r) => r.status === "error") ?? [];
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4"
+    >
+      <h2 className="font-semibold text-navy">容器写真のまとめてアップロード</h2>
+      <p className="text-sm text-foreground/70">
+        ファイル名を容器コードにしてください（例: 「073.png」→ 容器コード073）。
+        複数選択できます。
+      </p>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+      />
+      {files.length > 0 && (
+        <p className="text-sm text-foreground/70">{files.length}枚選択中</p>
+      )}
+      <button
+        type="submit"
+        disabled={files.length === 0 || busy}
+        className="self-start rounded bg-navy px-4 py-2 font-semibold text-white disabled:opacity-50"
+      >
+        {busy ? `アップロード中... (${doneCount}/${files.length})` : "まとめてアップロードする"}
+      </button>
+
+      {results && (
+        <div className="text-sm">
+          <p>
+            成功: {successCount}件 / 失敗: {failures.length}件
+          </p>
+          {failures.length > 0 && (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-red-600">
+              {failures.map((f) => (
+                <li key={f.fileName}>
+                  {f.fileName}（容器コード: {f.containerCode}）: {f.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </form>
   );
 }
