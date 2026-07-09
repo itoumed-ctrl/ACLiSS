@@ -6,6 +6,7 @@ import { useMasterData } from "@/lib/useMasterData";
 import { UpdatedAtNotice } from "@/components/UpdatedAtNotice";
 import { normalizeForSearch } from "@/lib/normalize";
 import { containerLabel } from "@/lib/containerLabel";
+import { BackNav } from "@/components/BackNav";
 
 export default function ContainersListPage() {
   const { containers, updatedAt, loading, error, isOffline } = useMasterData();
@@ -23,9 +24,7 @@ export default function ContainersListPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/" className="mb-4 inline-block text-navy underline">
-        ← ホームに戻る
-      </Link>
+      <BackNav />
       <h1 className="mb-4 text-2xl font-bold text-navy">容器一覧から選ぶ</h1>
 
       <input

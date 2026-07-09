@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { Container } from "@/lib/types";
 import { ContainerDetail } from "@/components/ContainerDetail";
+import { BackNav } from "@/components/BackNav";
 
 export default async function ContainerDetailPage({
   params,
@@ -32,9 +32,7 @@ export default async function ContainerDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/" className="mb-4 inline-block text-navy underline">
-        ← ホームに戻る
-      </Link>
+      <BackNav />
 
       {errorMessage && (
         <p className="rounded-lg bg-red-50 p-4 text-red-700">

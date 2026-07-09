@@ -7,6 +7,7 @@ import { UpdatedAtNotice } from "@/components/UpdatedAtNotice";
 import { normalizeForSearch } from "@/lib/normalize";
 import { containerLabel } from "@/lib/containerLabel";
 import type { Container, TestItem } from "@/lib/types";
+import { BackNav } from "@/components/BackNav";
 
 export default function TestItemSearchPage() {
   const { containers, testItems, updatedAt, loading, error, isOffline } = useMasterData();
@@ -27,9 +28,7 @@ export default function TestItemSearchPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/" className="mb-4 inline-block text-navy underline">
-        ← ホームに戻る
-      </Link>
+      <BackNav />
       <h1 className="mb-4 text-2xl font-bold text-navy">検査項目から探す</h1>
 
       <input

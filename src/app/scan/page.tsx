@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { extractContainerCodeFromBarcode } from "@/lib/barcode";
+import { BackNav } from "@/components/BackNav";
 
 // 検査バーコードは1次元バーコード。よく使われる形式に絞ると精度・速度が上がる。
 const HINTS = new Map<DecodeHintType, unknown>([
@@ -87,9 +87,7 @@ export default function ScanPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/" className="mb-4 inline-block text-navy underline">
-        ← ホームに戻る
-      </Link>
+      <BackNav />
       <h1 className="mb-4 text-2xl font-bold text-navy">バーコードをスキャン</h1>
 
       {!cameraError && (

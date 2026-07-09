@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Container } from "@/lib/types";
+import { BackNav } from "@/components/BackNav";
 
 const PASSCODE_STORAGE_KEY = "acliss-admin-passcode";
 
@@ -23,6 +24,7 @@ export default function AdminPage() {
   if (!unlocked) {
     return (
       <div className="mx-auto max-w-sm px-4 py-16">
+        <BackNav />
         <h1 className="mb-4 text-xl font-bold text-navy">ACLiSS 管理画面</h1>
         <form onSubmit={handleUnlock} className="flex flex-col gap-3">
           <label className="text-sm">
@@ -63,6 +65,7 @@ function AdminDashboard({
 }) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8">
+      <BackNav />
       <h1 className="text-xl font-bold text-navy">ACLiSS 管理画面</h1>
       <ImportForm
         title="容器マスタCSVのアップロード（材料シート）"
