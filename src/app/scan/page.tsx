@@ -24,23 +24,34 @@ const HINTS = new Map<DecodeHintType, unknown>([
 
 type ScanStatus = "initializing" | "scanning" | "success";
 
+// カメラの解像度が低いと特に1次元バーコードが読み取りにくいため、
+// 高めの解像度と連続オートフォーカスを希望する（対応していない端末は無視される）。
+const VIDEO_CONSTRAINTS: MediaTrackConstraints = {
+  facingMode: "environment",
+  width: { ideal: 1920 },
+  height: { ideal: 1080 },
+  advanced: [{ focusMode: "continuous" } as unknown as MediaTrackConstraintSet],
+};
+
 export default function ScanPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const controlsRef = useRef<import("@zxing/browser").IScannerControls | null>(null);
   const [status, setStatus] = useState<ScanStatus>("initializing");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualInput, setManualInput] = useState("");
   const [formatError, setFormatError] = useState<string | null>(null);
   const [lastScanned, setLastScanned] = useState<string | null>(null);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   useEffect(() => {
     const codeReader = new BrowserMultiFormatReader(HINTS);
     let cancelled = false;
-    let controls: { stop: () => void } | null = null;
 
     codeReader
       .decodeFromConstraints(
-        { video: { facingMode: "environment" } },
+        { video: VIDEO_CONSTRAINTS },
         videoRef.current!,
         (result) => {
           if (cancelled || !result) return;
@@ -49,15 +60,24 @@ export default function ScanPage() {
           const code = extractContainerCodeFromBarcode(raw);
           if (code) {
             cancelled = true;
-            controls?.stop();
+            controlsRef.current?.stop();
             setStatus("success");
             setTimeout(() => router.push(`/containers/${code}`), 400);
           }
         },
       )
       .then((c) => {
-        controls = c;
-        if (!cancelled) setStatus("scanning");
+        controlsRef.current = c;
+        if (cancelled) return;
+        setStatus("scanning");
+        try {
+          const capabilities = c.streamVideoCapabilitiesGet?.((track) => [track]);
+          if (capabilities && "torch" in capabilities) {
+            setTorchSupported(true);
+          }
+        } catch {
+          // トーチ対応の確認に失敗しても致命的ではないので無視する
+        }
       })
       .catch((e) => {
         setCameraError(
@@ -69,9 +89,19 @@ export default function ScanPage() {
 
     return () => {
       cancelled = true;
-      controls?.stop();
+      controlsRef.current?.stop();
     };
   }, [router]);
+
+  async function toggleTorch() {
+    const next = !torchOn;
+    try {
+      await controlsRef.current?.switchTorch?.(next);
+      setTorchOn(next);
+    } catch {
+      // 端末が対応していない場合は何もしない
+    }
+  }
 
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -103,6 +133,17 @@ export default function ScanPage() {
           <div className="absolute left-0 right-0 top-2 flex justify-center">
             <StatusBadge status={status} />
           </div>
+          {torchSupported && (
+            <button
+              type="button"
+              onClick={toggleTorch}
+              className={`absolute bottom-2 right-2 rounded-full px-3 py-2 text-sm font-semibold ${
+                torchOn ? "bg-gold text-navy" : "bg-black/60 text-white"
+              }`}
+            >
+              {torchOn ? "💡 ライトを消す" : "💡 ライトをつける"}
+            </button>
+          )}
         </div>
       )}
 
