@@ -4,16 +4,17 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMasterData } from "@/lib/useMasterData";
 import { UpdatedAtNotice } from "@/components/UpdatedAtNotice";
+import { normalizeForSearch } from "@/lib/normalize";
 
 export default function TestItemSearchPage() {
   const { testItems, updatedAt, loading, error, isOffline } = useMasterData();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeForSearch(query.trim());
     if (!q) return [];
     return testItems
-      .filter((t) => t.test_item_name.toLowerCase().includes(q))
+      .filter((t) => normalizeForSearch(t.test_item_name).includes(q))
       .slice(0, 50);
   }, [testItems, query]);
 

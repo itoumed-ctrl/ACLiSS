@@ -4,18 +4,19 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMasterData } from "@/lib/useMasterData";
 import { UpdatedAtNotice } from "@/components/UpdatedAtNotice";
+import { normalizeForSearch } from "@/lib/normalize";
 
 export default function ContainersListPage() {
   const { containers, updatedAt, loading, error, isOffline } = useMasterData();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeForSearch(query.trim());
     if (!q) return containers;
     return containers.filter((c) =>
       [c.container_code, c.vessel, c.material, c.test_summary, c.dispense_location]
         .filter(Boolean)
-        .some((field) => field!.toLowerCase().includes(q)),
+        .some((field) => normalizeForSearch(field!).includes(q)),
     );
   }, [containers, query]);
 
