@@ -49,14 +49,17 @@ export default function ContainersListPage() {
           <li key={c.container_code}>
             <Link
               href={`/containers/${c.container_code}`}
-              className="flex flex-col gap-1 py-3 active:bg-navy/5"
+              className="flex items-start gap-4 py-3 active:bg-navy/5"
             >
-              <span className="text-lg font-bold text-navy">
-                {c.container_code} {containerLabel(c)}
+              <span className="mt-0.5 shrink-0 rounded bg-navy/10 px-2 py-0.5 font-mono text-base font-bold tabular-nums text-navy">
+                {c.container_code}
               </span>
-              {c.test_summary && (
-                <span className="text-sm text-foreground/70">{c.test_summary}</span>
-              )}
+              <span className="flex flex-col gap-1">
+                <span className="text-lg font-bold text-navy">{containerLabel(c)}</span>
+                {c.test_summary && (
+                  <span className="text-sm text-foreground/70">{c.test_summary}</span>
+                )}
+              </span>
             </Link>
           </li>
         ))}
