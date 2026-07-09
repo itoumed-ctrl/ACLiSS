@@ -375,53 +375,65 @@ function BulkImageUploadForm({ passcode }: { passcode: string }) {
 }
 
 function ContainerList() {
+  const [open, setOpen] = useState(false);
   const [containers, setContainers] = useState<Container[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/containers")
-      .then((res) => res.json())
-      .then((json) => {
-        if (Array.isArray(json)) {
-          setContainers(json);
-        } else {
-          setError(json.error ?? "取得に失敗しました");
-        }
-      })
-      .catch(() => setError("通信エラーが発生しました"));
-  }, []);
+  function handleToggle(e: React.SyntheticEvent<HTMLDetailsElement>) {
+    const isOpen = e.currentTarget.open;
+    setOpen(isOpen);
+    if (isOpen && !containers && !error) {
+      fetch("/api/containers")
+        .then((res) => res.json())
+        .then((json) => {
+          if (Array.isArray(json)) {
+            setContainers(json);
+          } else {
+            setError(json.error ?? "取得に失敗しました");
+          }
+        })
+        .catch(() => setError("通信エラーが発生しました"));
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4">
-      <h2 className="font-semibold text-navy">容器マスタ一覧</h2>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {!error && !containers && <p className="text-sm">読み込み中...</p>}
-      {containers && containers.length === 0 && (
-        <p className="text-sm">まだデータがありません</p>
-      )}
-      {containers && containers.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-navy/20">
-                <th className="py-1 pr-2">容器コード</th>
-                <th className="py-1 pr-2">VESSEL</th>
-                <th className="py-1 pr-2">払い出し場所</th>
-              </tr>
-            </thead>
-            <tbody>
-              {containers.map((c) => (
-                <tr key={c.container_code} className="border-b border-navy/10">
-                  <td className="py-1 pr-2">{c.container_code}</td>
-                  <td className="py-1 pr-2">{c.vessel}</td>
-                  <td className="py-1 pr-2">{c.dispense_location}</td>
+    <details
+      className="rounded-lg border border-navy/20 p-4"
+      onToggle={handleToggle}
+    >
+      <summary className="cursor-pointer font-semibold text-navy">
+        容器マスタ一覧{containers ? `（${containers.length}件）` : ""}
+      </summary>
+      <div className="mt-3 flex flex-col gap-3">
+        {open && error && <p className="text-sm text-red-600">{error}</p>}
+        {open && !error && !containers && <p className="text-sm">読み込み中...</p>}
+        {containers && containers.length === 0 && (
+          <p className="text-sm">まだデータがありません</p>
+        )}
+        {containers && containers.length > 0 && (
+          <div className="max-h-96 overflow-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-navy/20">
+                  <th className="py-1 pr-2">容器コード</th>
+                  <th className="py-1 pr-2">VESSEL</th>
+                  <th className="py-1 pr-2">払い出し場所</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {containers.map((c) => (
+                  <tr key={c.container_code} className="border-b border-navy/10">
+                    <td className="py-1 pr-2">{c.container_code}</td>
+                    <td className="py-1 pr-2">{c.vessel}</td>
+                    <td className="py-1 pr-2">{c.dispense_location}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
