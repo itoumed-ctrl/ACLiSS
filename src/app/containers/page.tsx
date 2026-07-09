@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useMasterData } from "@/lib/useMasterData";
 import { UpdatedAtNotice } from "@/components/UpdatedAtNotice";
 import { normalizeForSearch } from "@/lib/normalize";
+import { containerLabel } from "@/lib/containerLabel";
 
 export default function ContainersListPage() {
   const { containers, updatedAt, loading, error, isOffline } = useMasterData();
@@ -50,7 +51,7 @@ export default function ContainersListPage() {
               className="flex flex-col gap-1 py-3 active:bg-navy/5"
             >
               <span className="text-lg font-bold text-navy">
-                {c.container_code} {c.vessel}
+                {c.container_code} {containerLabel(c)}
               </span>
               {c.test_summary && (
                 <span className="text-sm text-foreground/70">{c.test_summary}</span>

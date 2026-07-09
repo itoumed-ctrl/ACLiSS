@@ -5,10 +5,17 @@ import { useMemo, useState } from "react";
 import { useMasterData } from "@/lib/useMasterData";
 import { UpdatedAtNotice } from "@/components/UpdatedAtNotice";
 import { normalizeForSearch } from "@/lib/normalize";
+import { containerLabel } from "@/lib/containerLabel";
+import type { Container, TestItem } from "@/lib/types";
 
 export default function TestItemSearchPage() {
-  const { testItems, updatedAt, loading, error, isOffline } = useMasterData();
+  const { containers, testItems, updatedAt, loading, error, isOffline } = useMasterData();
   const [query, setQuery] = useState("");
+
+  const containersByCode = useMemo(() => {
+    const map = new Map(containers.map((c) => [c.container_code, c]));
+    return map;
+  }, [containers]);
 
   const filtered = useMemo(() => {
     const q = normalizeForSearch(query.trim());
@@ -47,24 +54,11 @@ export default function TestItemSearchPage() {
 
       <ul className="divide-y divide-navy/10">
         {filtered.map((t) => (
-          <li key={t.test_item_code}>
-            {t.container_code ? (
-              <Link
-                href={`/containers/${t.container_code}`}
-                className="flex flex-col gap-1 py-3 active:bg-navy/5"
-              >
-                <span className="text-lg font-bold text-navy">{t.test_item_name}</span>
-                <span className="text-sm text-foreground/70">
-                  容器コード: {t.container_code}
-                </span>
-              </Link>
-            ) : (
-              <div className="flex flex-col gap-1 py-3 text-foreground/50">
-                <span className="text-lg">{t.test_item_name}</span>
-                <span className="text-sm">対応する容器コードが未設定です</span>
-              </div>
-            )}
-          </li>
+          <TestItemRow
+            key={t.test_item_code}
+            testItem={t}
+            container={t.container_code ? containersByCode.get(t.container_code) : undefined}
+          />
         ))}
       </ul>
 
@@ -72,5 +66,39 @@ export default function TestItemSearchPage() {
         <p className="py-6 text-center text-foreground/60">該当する検査項目が見つかりません</p>
       )}
     </div>
+  );
+}
+
+function TestItemRow({
+  testItem,
+  container,
+}: {
+  testItem: TestItem;
+  container: Container | undefined;
+}) {
+  if (!testItem.container_code) {
+    return (
+      <li>
+        <div className="flex flex-col gap-1 py-3 text-foreground/50">
+          <span className="text-lg">{testItem.test_item_name}</span>
+          <span className="text-sm">対応する容器コードが未設定です</span>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Link
+        href={`/containers/${testItem.container_code}`}
+        className="flex flex-col gap-1 py-3 active:bg-navy/5"
+      >
+        <span className="text-lg font-bold text-navy">{testItem.test_item_name}</span>
+        <span className="text-sm text-foreground/70">
+          容器コード: {testItem.container_code}
+          {container && `（${containerLabel(container)}）`}
+        </span>
+      </Link>
+    </li>
   );
 }
