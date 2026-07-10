@@ -11,7 +11,7 @@ export function BackNav() {
       <button type="button" onClick={() => router.back()} className="underline">
         ← 戻る
       </button>
-      <Link href="/" className="underline">
+      <Link href="/" prefetch={false} className="underline">
         ホーム
       </Link>
     </div>

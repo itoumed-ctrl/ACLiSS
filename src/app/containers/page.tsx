@@ -49,6 +49,7 @@ export default function ContainersListPage() {
           <li key={c.container_code}>
             <Link
               href={`/containers/${c.container_code}`}
+              prefetch={false}
               className="flex items-start gap-4 py-3 active:bg-navy/5"
             >
               <span className="mt-0.5 shrink-0 rounded bg-navy/10 px-2 py-0.5 font-mono text-base font-bold tabular-nums text-navy">

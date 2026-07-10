@@ -113,6 +113,7 @@ function TestItemRow({
     <li>
       <Link
         href={`/containers/${testItem.container_code}`}
+        prefetch={false}
         className="flex flex-col gap-1 py-3 active:bg-navy/5"
       >
         <span className="text-lg font-bold text-navy">{testItem.test_item_name}</span>

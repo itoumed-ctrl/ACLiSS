@@ -23,6 +23,7 @@ export default function Home() {
 
       <Link
         href="/admin"
+        prefetch={false}
         className="mt-6 self-center text-sm text-foreground/50 underline"
       >
         管理者はこちら
@@ -43,6 +44,7 @@ function HomeButton({
   return (
     <Link
       href={href}
+      prefetch={false}
       className="flex flex-col gap-1 rounded-lg border-2 border-navy/20 bg-white px-5 py-5 active:bg-navy/5"
     >
       <span className="text-xl font-bold text-navy">{title}</span>
