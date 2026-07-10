@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { Logo } from "@/components/Logo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,8 +52,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <header className="bg-navy text-white">
           <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-            <span className="text-xl font-bold tracking-wide">ACLiSS</span>
-            <span className="h-5 w-1 rounded bg-gold" aria-hidden="true" />
+            <Logo variant="reversed" className="h-9 w-auto shrink-0" />
             <span className="text-sm text-white/80">
               臨床検査情報提供システム
             </span>
