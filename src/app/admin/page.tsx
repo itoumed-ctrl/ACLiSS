@@ -458,9 +458,9 @@ function AccessLogList({ passcode }: { passcode: string }) {
     <div className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4">
       <h2 className="font-semibold text-navy">アクセスログ（直近200件）</h2>
       <p className="text-sm text-foreground/70">
-        看護師が使う画面（トップ・スキャン・容器一覧・容器詳細・検査項目検索）と管理画面への
-        アクセスを記録しています。閲覧側に合言葉認証をかけていないため、不審なアクセスがないか
-        確認する目的です。
+        各機能（スキャン・容器一覧・検査項目検索）を開いた時と、管理画面に入った時のみ表示しています
+        （容器詳細やトップページの表示は件数が多くなるため非表示。記録自体はすべて保存しています）。
+        閲覧側に合言葉認証をかけていないため、不審なアクセスがないか確認する目的です。
       </p>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!error && !logs && <p className="text-sm">読み込み中...</p>}

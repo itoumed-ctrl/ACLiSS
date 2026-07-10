@@ -18,9 +18,13 @@ export async function GET(request: Request) {
   }
 
   try {
+    // 記録自体はsrc/proxy.tsで全ページ分行っているが、管理画面に表示するのは
+    // 「各機能を使った時」（スキャン・容器一覧・検査項目検索）と「管理画面に入った時」に絞る。
+    // 容器詳細（/containers/[code]）やトップページの表示は件数が多くなりすぎるため除外する。
     const { data, error } = await supabaseAdmin
       .from("access_logs")
       .select("id, accessed_at, path, ip_address, user_agent")
+      .in("path", ["/scan", "/containers", "/search", "/admin"])
       .order("accessed_at", { ascending: false })
       .limit(200);
 
