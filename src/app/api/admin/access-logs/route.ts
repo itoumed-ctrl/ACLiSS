@@ -19,20 +19,39 @@ export async function GET(request: Request) {
 
   try {
     // 記録自体はsrc/proxy.tsで全ページ分行っているが、管理画面に表示するのは
-    // 「各機能を使った時」（スキャン・容器一覧・検査項目検索）と「管理画面に入った時」に絞る。
-    // 容器詳細（/containers/[code]）やトップページの表示は件数が多くなりすぎるため除外する。
-    const { data, error } = await supabaseAdmin
-      .from("access_logs")
-      .select("id, accessed_at, path, ip_address, user_agent")
-      .in("path", ["/scan", "/containers", "/search", "/admin"])
-      .order("accessed_at", { ascending: false })
-      .limit(50);
+    // 「容器詳細（バーコード・容器一覧・検査項目検索のいずれから開いても対象）」と
+    // 「管理画面に入った時」に絞る。トップページ・容器一覧・検査項目検索の
+    // 一覧表示自体は件数が多くなりすぎるため除外する。
+    // or()フィルタのlikeパターンはワイルドカードの扱いが分かりにくいため、
+    // 条件ごとに分けて取得し、アプリ側でまとめて新しい順に並べ替える。
+    const select = "id, accessed_at, path, ip_address, user_agent";
+    const [adminLogs, containerDetailLogs] = await Promise.all([
+      supabaseAdmin
+        .from("access_logs")
+        .select(select)
+        .eq("path", "/admin")
+        .order("accessed_at", { ascending: false })
+        .limit(50),
+      supabaseAdmin
+        .from("access_logs")
+        .select(select)
+        .like("path", "/containers/%")
+        .order("accessed_at", { ascending: false })
+        .limit(50),
+    ]);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (adminLogs.error) {
+      return NextResponse.json({ error: adminLogs.error.message }, { status: 500 });
+    }
+    if (containerDetailLogs.error) {
+      return NextResponse.json({ error: containerDetailLogs.error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data ?? []);
+    const data = [...(adminLogs.data ?? []), ...(containerDetailLogs.data ?? [])]
+      .sort((a, b) => (a.accessed_at < b.accessed_at ? 1 : -1))
+      .slice(0, 50);
+
+    return NextResponse.json(data);
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     return NextResponse.json(

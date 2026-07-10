@@ -469,8 +469,10 @@ function AccessLogList({ passcode }: { passcode: string }) {
       </summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-foreground/70">
-          各機能（スキャン・容器一覧・検査項目検索）を開いた時と、管理画面に入った時のみ表示しています
-          （容器詳細やトップページの表示は件数が多くなるため非表示。記録自体はすべて保存しています）。
+          容器詳細（バーコード・容器一覧・検査項目検索のどこから開いても対象）と、
+          管理画面に入った時のみ表示しています
+          （トップページ・容器一覧・検査項目検索の一覧表示自体は件数が多くなるため非表示。
+          記録自体はすべて保存しています）。
           閲覧側に合言葉認証をかけていないため、不審なアクセスがないか確認する目的です。
         </p>
         {open && error && <p className="text-sm text-red-600">{error}</p>}
