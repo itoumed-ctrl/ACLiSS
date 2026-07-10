@@ -55,12 +55,7 @@ export default function ContainersListPage() {
               <span className="mt-0.5 shrink-0 rounded bg-navy/10 px-2 py-0.5 font-mono text-base font-bold tabular-nums text-navy">
                 {c.container_code}
               </span>
-              <span className="flex flex-col gap-1">
-                <span className="text-lg font-bold text-navy">{containerLabel(c)}</span>
-                {c.test_summary && (
-                  <span className="text-sm text-foreground/70">{c.test_summary}</span>
-                )}
-              </span>
+              <span className="text-lg font-bold text-navy">{containerLabel(c)}</span>
             </Link>
           </li>
         ))}
