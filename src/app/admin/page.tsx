@@ -11,17 +11,61 @@ function readSavedPasscode(): string {
   return sessionStorage.getItem(PASSCODE_STORAGE_KEY) ?? "";
 }
 
+async function verifyPasscode(passcode: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/admin/verify-passcode", {
+      method: "POST",
+      headers: { "x-admin-passcode": passcode },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+type GateStatus = "checking" | "locked" | "unlocked";
+
 export default function AdminPage() {
   const [passcode, setPasscode] = useState(readSavedPasscode);
-  const [unlocked, setUnlocked] = useState(() => readSavedPasscode() !== "");
+  const [status, setStatus] = useState<GateStatus>(() =>
+    readSavedPasscode() ? "checking" : "locked",
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  function handleUnlock(e: React.FormEvent) {
+  useEffect(() => {
+    const saved = readSavedPasscode();
+    if (!saved) return;
+    verifyPasscode(saved).then((ok) => {
+      if (!ok) sessionStorage.removeItem(PASSCODE_STORAGE_KEY);
+      setStatus(ok ? "unlocked" : "locked");
+    });
+  }, []);
+
+  async function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
-    sessionStorage.setItem(PASSCODE_STORAGE_KEY, passcode);
-    setUnlocked(true);
+    setBusy(true);
+    setError(null);
+    const ok = await verifyPasscode(passcode);
+    setBusy(false);
+    if (ok) {
+      sessionStorage.setItem(PASSCODE_STORAGE_KEY, passcode);
+      setStatus("unlocked");
+    } else {
+      setError("合言葉が違います");
+    }
   }
 
-  if (!unlocked) {
+  if (status === "checking") {
+    return (
+      <div className="mx-auto max-w-sm px-4 py-16">
+        <BackNav />
+        <p className="text-sm text-foreground/60">確認中...</p>
+      </div>
+    );
+  }
+
+  if (status === "locked") {
     return (
       <div className="mx-auto max-w-sm px-4 py-16">
         <BackNav />
@@ -37,11 +81,13 @@ export default function AdminPage() {
               autoFocus
             />
           </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
-            className="rounded bg-navy px-4 py-2 font-semibold text-white"
+            disabled={busy}
+            className="rounded bg-navy px-4 py-2 font-semibold text-white disabled:opacity-50"
           >
-            入る
+            {busy ? "確認中..." : "入る"}
           </button>
         </form>
       </div>
