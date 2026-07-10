@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       .select("id, accessed_at, path, ip_address, user_agent")
       .in("path", ["/scan", "/containers", "/search", "/admin"])
       .order("accessed_at", { ascending: false })
-      .limit(200);
+      .limit(50);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

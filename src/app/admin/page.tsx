@@ -438,64 +438,76 @@ function ContainerList() {
 }
 
 function AccessLogList({ passcode }: { passcode: string }) {
+  const [open, setOpen] = useState(false);
   const [logs, setLogs] = useState<AccessLog[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/admin/access-logs", { headers: { "x-admin-passcode": passcode } })
-      .then((res) => res.json())
-      .then((json) => {
-        if (Array.isArray(json)) {
-          setLogs(json);
-        } else {
-          setError(json.error ?? "取得に失敗しました");
-        }
-      })
-      .catch(() => setError("通信エラーが発生しました"));
-  }, [passcode]);
+  function handleToggle(e: React.SyntheticEvent<HTMLDetailsElement>) {
+    const isOpen = e.currentTarget.open;
+    setOpen(isOpen);
+    if (isOpen && !logs && !error) {
+      fetch("/api/admin/access-logs", { headers: { "x-admin-passcode": passcode } })
+        .then((res) => res.json())
+        .then((json) => {
+          if (Array.isArray(json)) {
+            setLogs(json);
+          } else {
+            setError(json.error ?? "取得に失敗しました");
+          }
+        })
+        .catch(() => setError("通信エラーが発生しました"));
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4">
-      <h2 className="font-semibold text-navy">アクセスログ（直近200件）</h2>
-      <p className="text-sm text-foreground/70">
-        各機能（スキャン・容器一覧・検査項目検索）を開いた時と、管理画面に入った時のみ表示しています
-        （容器詳細やトップページの表示は件数が多くなるため非表示。記録自体はすべて保存しています）。
-        閲覧側に合言葉認証をかけていないため、不審なアクセスがないか確認する目的です。
-      </p>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {!error && !logs && <p className="text-sm">読み込み中...</p>}
-      {logs && logs.length === 0 && <p className="text-sm">まだ記録がありません</p>}
-      {logs && logs.length > 0 && (
-        <div className="max-h-96 overflow-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-navy/20">
-                <th className="py-1 pr-2">日時</th>
-                <th className="py-1 pr-2">ページ</th>
-                <th className="py-1 pr-2">IPアドレス</th>
-                <th className="py-1 pr-2">ブラウザ情報</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id} className="border-b border-navy/10 align-top">
-                  <td className="whitespace-nowrap py-1 pr-2">
-                    {new Date(log.accessed_at).toLocaleString("ja-JP")}
-                  </td>
-                  <td className="py-1 pr-2 font-mono text-xs">{log.path}</td>
-                  <td className="whitespace-nowrap py-1 pr-2 font-mono text-xs">
-                    {log.ip_address ?? "-"}
-                  </td>
-                  <td className="max-w-xs truncate py-1 pr-2 text-xs text-foreground/60">
-                    {log.user_agent ?? "-"}
-                  </td>
+    <details
+      className="rounded-lg border border-navy/20 p-4"
+      onToggle={handleToggle}
+    >
+      <summary className="cursor-pointer font-semibold text-navy">
+        アクセスログ（直近50件）
+      </summary>
+      <div className="mt-3 flex flex-col gap-3">
+        <p className="text-sm text-foreground/70">
+          各機能（スキャン・容器一覧・検査項目検索）を開いた時と、管理画面に入った時のみ表示しています
+          （容器詳細やトップページの表示は件数が多くなるため非表示。記録自体はすべて保存しています）。
+          閲覧側に合言葉認証をかけていないため、不審なアクセスがないか確認する目的です。
+        </p>
+        {open && error && <p className="text-sm text-red-600">{error}</p>}
+        {open && !error && !logs && <p className="text-sm">読み込み中...</p>}
+        {logs && logs.length === 0 && <p className="text-sm">まだ記録がありません</p>}
+        {logs && logs.length > 0 && (
+          <div className="max-h-96 overflow-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-navy/20">
+                  <th className="py-1 pr-2">日時</th>
+                  <th className="py-1 pr-2">ページ</th>
+                  <th className="py-1 pr-2">IPアドレス</th>
+                  <th className="py-1 pr-2">ブラウザ情報</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id} className="border-b border-navy/10 align-top">
+                    <td className="whitespace-nowrap py-1 pr-2">
+                      {new Date(log.accessed_at).toLocaleString("ja-JP")}
+                    </td>
+                    <td className="py-1 pr-2 font-mono text-xs">{log.path}</td>
+                    <td className="whitespace-nowrap py-1 pr-2 font-mono text-xs">
+                      {log.ip_address ?? "-"}
+                    </td>
+                    <td className="max-w-xs truncate py-1 pr-2 text-xs text-foreground/60">
+                      {log.user_agent ?? "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
