@@ -51,19 +51,21 @@ function TestItemSearchPageInner() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <BackNav />
-      <h1 className="mb-4 text-2xl font-bold text-navy">検査項目から探す</h1>
+      <div className="sticky top-0 z-10 -mx-4 bg-background px-4 pb-3 pt-6">
+        <BackNav />
+        <h1 className="mb-4 text-2xl font-bold text-navy">検査項目から探す</h1>
 
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => handleQueryChange(e.target.value)}
-        placeholder="検査項目名を入力（例: グルコース）"
-        className="mb-4 w-full rounded border border-navy/30 px-3 py-3 text-lg"
-        autoFocus
-      />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => handleQueryChange(e.target.value)}
+          placeholder="検査項目名を入力（例: グルコース）"
+          className="mb-2 w-full rounded border border-navy/30 px-3 py-3 text-lg"
+          autoFocus
+        />
 
-      <UpdatedAtNotice updatedAt={updatedAt} isOffline={isOffline} />
+        <UpdatedAtNotice updatedAt={updatedAt} isOffline={isOffline} />
+      </div>
 
       {loading && testItems.length === 0 && <p>読み込み中...</p>}
       {error && testItems.length === 0 && (
