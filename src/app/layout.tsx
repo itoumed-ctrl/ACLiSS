@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
@@ -51,7 +52,9 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <header className="bg-navy text-white">
           <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-            <span className="text-xl font-bold tracking-wide">ACLiSS</span>
+            <Link href="/" prefetch={false} className="text-xl font-bold tracking-wide">
+              ACLiSS
+            </Link>
             <span className="h-5 w-1 rounded bg-gold" aria-hidden="true" />
             <span className="text-sm text-white/80">
               臨床検査情報提供システム
