@@ -1,0 +1,23 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" fill="#ffffff"/>
+  <g transform="translate(4,4) scale(0.09333333333333334)">
+    <g transform="rotate(-45 300 300)">
+      <clipPath id="tc"><path d="M 255 20 L 255 480 A 45 45 0 0 0 345 480 L 345 20 Z"/></clipPath>
+      <rect x="245" y="330" width="110" height="180" fill="#FBF0CE" clip-path="url(#tc)"/>
+      <g clip-path="url(#tc)">
+        <circle cx="285" cy="360" r="6" fill="#ffffff"/>
+        <circle cx="315" cy="380" r="4" fill="#ffffff"/>
+        <circle cx="295" cy="405" r="7" fill="#ffffff"/>
+        <circle cx="285" cy="120" r="5" fill="#e9edf2"/>
+        <circle cx="310" cy="150" r="3" fill="#e9edf2"/>
+        <circle cx="295" cy="200" r="4" fill="#e9edf2"/>
+      </g>
+      <path d="M 255 20 L 255 480 A 45 45 0 0 0 345 480 L 345 20"
+            fill="none" stroke="#C6D0DC" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="40" y="345" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="115" fill="#1F3864" letter-spacing="-3">ACL</text>
+    <rect x="308" y="278" width="17" height="67" rx="7" fill="#1F3864"/>
+    <path d="M 325 236 L 370 236 L 370 247 L 345 258 L 370 269 L 370 280 L 325 280 Z" fill="#FFC000"/>
+    <text x="340" y="345" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="115" fill="#1F3864" letter-spacing="-3">SS</text>
+  </g>
+</svg>
