@@ -222,7 +222,7 @@ export default function ScanPage() {
         <div className="relative mb-4">
           <video
             ref={videoRef}
-            className={`w-full rounded-lg border-4 bg-black transition-colors ${
+            className={`aspect-[4/3] w-full rounded-lg border-4 bg-black object-cover transition-colors ${
               status === "success" ? "border-green-500" : "border-navy/20"
             }`}
             muted
