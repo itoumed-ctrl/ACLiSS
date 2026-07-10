@@ -15,3 +15,16 @@ export function extractContainerCodeFromBarcode(barcode: string): string | null 
   const last4 = digits.slice(8, 12);
   return last4.slice(0, 3);
 }
+
+/**
+ * ラベルに印字されている11桁の数字（バーコード12桁のうち、
+ * 印字されない末尾のチェックデジット1桁を除いたもの）から容器コードを取り出す。
+ * 容器コードは末尾3桁と一致する。
+ */
+export function extractContainerCodeFromLabelDigits(labelDigits: string): string | null {
+  const digits = labelDigits.trim();
+  if (!/^\d{11}$/.test(digits)) {
+    return null;
+  }
+  return digits.slice(-3);
+}

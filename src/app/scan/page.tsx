@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
-import { extractContainerCodeFromBarcode } from "@/lib/barcode";
+import { extractContainerCodeFromBarcode, extractContainerCodeFromLabelDigits } from "@/lib/barcode";
 import { BackNav } from "@/components/BackNav";
 
 // 検査バーコードは1次元バーコード。よく使われる形式に絞ると精度・速度が上がる。
@@ -204,9 +204,9 @@ export default function ScanPage() {
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = manualInput.trim();
-    const code = extractContainerCodeFromBarcode(trimmed);
+    const code = extractContainerCodeFromLabelDigits(trimmed);
     if (!code) {
-      setFormatError("12桁の数字で入力してください（バーコード印字の数字をそのまま）");
+      setFormatError("11桁の数字で入力してください（ラベルに印字されている数字をそのまま）");
       return;
     }
     setFormatError(null);
@@ -258,7 +258,7 @@ export default function ScanPage() {
         <p className="mb-4 rounded-lg bg-red-50 p-4 text-red-700">
           カメラを利用できません: {cameraError}
           <br />
-          下の欄にバーコードの12桁の数字を直接入力してください。
+          下の欄にラベルの11桁の数字を直接入力してください。
         </p>
       )}
 
@@ -271,7 +271,7 @@ export default function ScanPage() {
       )}
 
       <p className="mb-2 text-sm text-foreground/70">
-        カメラがうまく読み取れない場合は、バーコード下の12桁の数字を直接入力できます。
+        カメラがうまく読み取れない場合は、ラベルの11桁の数字を直接入力できます。
       </p>
       <form onSubmit={handleManualSubmit} className="flex gap-2">
         <input
@@ -279,7 +279,7 @@ export default function ScanPage() {
           inputMode="numeric"
           value={manualInput}
           onChange={(e) => setManualInput(e.target.value)}
-          placeholder="例: 000000001210"
+          placeholder="例: 00000000121"
           className="flex-1 rounded border border-navy/30 px-3 py-3 text-lg"
         />
         <button
