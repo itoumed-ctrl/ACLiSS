@@ -14,9 +14,15 @@ import { logAccess } from "@/lib/supabase-admin";
 export default async function proxy(request: NextRequest) {
   // トップページのリンクは画面に表示された時点でNext.jsが裏側で
   // 先読み（プリフェッチ）するため、実際に開いていないページまで
-  // ログに記録されてしまう。プリフェッチのリクエストにはこのヘッダーが
-  // 付くため、それだけは記録の対象から除外する。
-  const isPrefetch = request.headers.get("next-router-prefetch") !== null;
+  // ログに記録されてしまう。プリフェッチのリクエストには専用のヘッダーが
+  // 付く（ページ全体の先読みは next-router-prefetch、部分的な先読みは
+  // next-router-segment-prefetch）ため、それらは記録の対象から除外する。
+  // ブラウザ標準の投機的プリフェッチ（purpose/sec-purposeヘッダー）も同様に除外する。
+  const isPrefetch =
+    request.headers.get("next-router-prefetch") !== null ||
+    request.headers.get("next-router-segment-prefetch") !== null ||
+    request.headers.get("purpose") === "prefetch" ||
+    request.headers.get("sec-purpose")?.includes("prefetch");
 
   if (!isPrefetch) {
     const ipAddress =
