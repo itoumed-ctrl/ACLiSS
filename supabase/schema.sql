@@ -90,9 +90,12 @@ create table if not exists access_logs (
   id bigint generated always as identity primary key,
   accessed_at timestamptz not null default now(),
   path text not null,                        -- アクセスされたページ（例: /containers/121）
-  ip_address text,                           -- アクセス元IPアドレス
-  user_agent text                            -- ブラウザ情報
+  ip_address text,                           -- アクセス元IPアドレス（変わることがある）
+  user_agent text,                           -- ブラウザ情報
+  device_id text                             -- 端末識別用のランダムID（Cookieで発行。IPが変わっても同一端末なら一致）
 );
+
+alter table access_logs add column if not exists device_id text;
 
 create index if not exists access_logs_accessed_at_idx
   on access_logs (accessed_at desc);

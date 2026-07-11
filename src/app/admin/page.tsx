@@ -520,6 +520,9 @@ function AccessLogList({ passcode }: { passcode: string }) {
           （トップページ・容器一覧・検査項目検索の一覧表示自体は件数が多くなるため非表示。
           記録自体はすべて保存しています）。
           閲覧側に合言葉認証をかけていないため、不審なアクセスがないか確認する目的です。
+          端末IDはCookieで発行する匿名のランダムな値で、IPアドレスが変わっても
+          同じ端末からのアクセスかどうかの判断に使えます（個人を特定するものではなく、
+          Cookieが消えると別のIDになります）。
         </p>
         {open && error && <p className="text-sm text-red-600">{error}</p>}
         {open && !error && !logs && <p className="text-sm">読み込み中...</p>}
@@ -531,6 +534,7 @@ function AccessLogList({ passcode }: { passcode: string }) {
                 <tr className="border-b border-navy/20">
                   <th className="py-1 pr-2">日時</th>
                   <th className="py-1 pr-2">ページ</th>
+                  <th className="py-1 pr-2">端末ID</th>
                   <th className="py-1 pr-2">IPアドレス</th>
                   <th className="py-1 pr-2">ブラウザ情報</th>
                 </tr>
@@ -542,6 +546,12 @@ function AccessLogList({ passcode }: { passcode: string }) {
                       {new Date(log.accessed_at).toLocaleString("ja-JP")}
                     </td>
                     <td className="py-1 pr-2 font-mono text-xs">{log.path}</td>
+                    <td
+                      className="whitespace-nowrap py-1 pr-2 font-mono text-xs"
+                      title={log.device_id ?? undefined}
+                    >
+                      {log.device_id ? log.device_id.slice(0, 8) : "-"}
+                    </td>
                     <td className="whitespace-nowrap py-1 pr-2 font-mono text-xs">
                       {log.ip_address ?? "-"}
                     </td>

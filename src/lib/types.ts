@@ -34,4 +34,5 @@ export interface AccessLog {
   path: string;
   ip_address: string | null;
   user_agent: string | null;
+  device_id: string | null;
 }

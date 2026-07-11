@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     // 一覧表示自体は件数が多くなりすぎるため除外する。
     // or()フィルタのlikeパターンはワイルドカードの扱いが分かりにくいため、
     // 条件ごとに分けて取得し、アプリ側でまとめて新しい順に並べ替える。
-    const select = "id, accessed_at, path, ip_address, user_agent";
+    const select = "id, accessed_at, path, ip_address, user_agent, device_id";
     const [adminLogs, containerDetailLogs] = await Promise.all([
       supabaseAdmin
         .from("access_logs")

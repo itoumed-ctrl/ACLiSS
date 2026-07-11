@@ -67,6 +67,7 @@ export async function logAccess(entry: {
   path: string;
   ipAddress: string | null;
   userAgent: string | null;
+  deviceId: string | null;
 }): Promise<void> {
   try {
     const supabaseAdmin = getSupabaseAdminClient();
@@ -74,6 +75,7 @@ export async function logAccess(entry: {
       path: entry.path,
       ip_address: entry.ipAddress,
       user_agent: entry.userAgent,
+      device_id: entry.deviceId,
     });
   } catch {
     // Supabase未接続時などは記録をスキップする
