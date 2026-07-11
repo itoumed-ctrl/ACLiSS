@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AccessLog, Container } from "@/lib/types";
 import { BackNav } from "@/components/BackNav";
 
@@ -488,6 +488,19 @@ function AccessLogList({ passcode }: { passcode: string }) {
   const [logs, setLogs] = useState<AccessLog[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 端末IDは長いUUIDなので、表示ではこの一覧内で最初に登場した順に1,2,3...と振り直す。
+  const deviceNumbers = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!logs) return map;
+    // 古い順に見ていくことで、先に現れた端末ほど小さい番号になるようにする。
+    for (const log of [...logs].reverse()) {
+      if (log.device_id && !map.has(log.device_id)) {
+        map.set(log.device_id, map.size + 1);
+      }
+    }
+    return map;
+  }, [logs]);
+
   function handleToggle(e: React.SyntheticEvent<HTMLDetailsElement>) {
     const isOpen = e.currentTarget.open;
     setOpen(isOpen);
@@ -520,9 +533,10 @@ function AccessLogList({ passcode }: { passcode: string }) {
           （トップページ・容器一覧・検査項目検索の一覧表示自体は件数が多くなるため非表示。
           記録自体はすべて保存しています）。
           閲覧側に合言葉認証をかけていないため、不審なアクセスがないか確認する目的です。
-          端末IDはCookieで発行する匿名のランダムな値で、IPアドレスが変わっても
-          同じ端末からのアクセスかどうかの判断に使えます（個人を特定するものではなく、
-          Cookieが消えると別のIDになります）。
+          端末IDはCookieで発行する匿名の値で、IPアドレスが変わっても同じ端末からの
+          アクセスかどうかの判断に使えます（個人を特定するものではなく、Cookieが
+          消えると別のIDになります）。表示上は元の値が長いため、この一覧内に
+          最初に登場した順に1, 2, 3...と番号を振り直しています。
         </p>
         {open && error && <p className="text-sm text-red-600">{error}</p>}
         {open && !error && !logs && <p className="text-sm">読み込み中...</p>}
@@ -550,7 +564,7 @@ function AccessLogList({ passcode }: { passcode: string }) {
                       className="whitespace-nowrap py-1 pr-2 font-mono text-xs"
                       title={log.device_id ?? undefined}
                     >
-                      {log.device_id ? log.device_id.slice(0, 8) : "-"}
+                      {log.device_id ? deviceNumbers.get(log.device_id) : "-"}
                     </td>
                     <td className="whitespace-nowrap py-1 pr-2 font-mono text-xs">
                       {log.ip_address ?? "-"}
