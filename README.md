@@ -60,7 +60,7 @@ ACLiSS/
 │   │   ├── containers/page.tsx      容器一覧・検索画面
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
 │   │   ├── search/page.tsx          検査項目検索画面
-│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・一覧・アクセスログ・パスワード変更）
+│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・アクセスログ・パスワード変更）
 │   │   └── api/
 │   │       ├── containers/route.ts          GET 容器一覧
 │   │       ├── containers/[code]/route.ts   GET 容器詳細

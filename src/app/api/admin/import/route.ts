@@ -78,24 +78,17 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const type = formData.get("type");
   const file = formData.get("file");
-  const csvText = formData.get("csvText");
   const importedBy = formData.get("importedBy");
 
   if (type !== "containers" && type !== "test_items") {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
   }
-
-  let text: string;
-  let sourceFileName: string;
-  if (file instanceof File) {
-    text = await file.text();
-    sourceFileName = file.name;
-  } else if (typeof csvText === "string" && csvText.trim()) {
-    text = csvText;
-    sourceFileName = "貼り付けたテキスト";
-  } else {
+  if (!(file instanceof File)) {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
   }
+
+  const text = await file.text();
+  const sourceFileName = file.name;
   const parsed = Papa.parse<ContainerRow & TestItemRow>(text, {
     header: true,
     skipEmptyLines: true,

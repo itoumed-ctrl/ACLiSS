@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { AccessLog, Container } from "@/lib/types";
+import type { AccessLog } from "@/lib/types";
 import { BackNav } from "@/components/BackNav";
 
 const PASSCODE_STORAGE_KEY = "acliss-admin-passcode";
@@ -125,7 +125,6 @@ function AdminDashboard({
       />
       <ImageUploadForm passcode={passcode} />
       <BulkImageUploadForm passcode={passcode} />
-      <ContainerList />
       <AccessLogList passcode={passcode} />
       <ChangePasscodeForm passcode={passcode} onPasscodeChange={onPasscodeChange} />
     </div>
@@ -142,24 +141,19 @@ function ImportForm({
   passcode: string;
 }) {
   const [file, setFile] = useState<File | null>(null);
-  const [csvText, setCsvText] = useState("");
   const [importedBy, setImportedBy] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file && !csvText.trim()) return;
+    if (!file) return;
     setBusy(true);
     setStatus(null);
 
     const formData = new FormData();
     formData.set("type", type);
-    if (file) {
-      formData.set("file", file);
-    } else {
-      formData.set("csvText", csvText);
-    }
+    formData.set("file", file);
     formData.set("importedBy", importedBy);
 
     try {
@@ -193,16 +187,6 @@ function ImportForm({
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
       />
       <label className="text-sm">
-        またはCSVの内容をここに貼り付け
-        <textarea
-          value={csvText}
-          onChange={(e) => setCsvText(e.target.value)}
-          rows={4}
-          placeholder="1行目に列名、2行目以降にデータを貼り付けてください"
-          className="mt-1 w-full rounded border border-navy/30 px-3 py-2 font-mono text-xs"
-        />
-      </label>
-      <label className="text-sm">
         実行者名（任意、記録用）
         <input
           type="text"
@@ -213,7 +197,7 @@ function ImportForm({
       </label>
       <button
         type="submit"
-        disabled={(!file && !csvText.trim()) || busy}
+        disabled={!file || busy}
         className="self-start rounded bg-navy px-4 py-2 font-semibold text-white disabled:opacity-50"
       >
         {busy ? "取り込み中..." : "取り込む"}
@@ -417,69 +401,6 @@ function BulkImageUploadForm({ passcode }: { passcode: string }) {
         </div>
       )}
     </form>
-  );
-}
-
-function ContainerList() {
-  const [open, setOpen] = useState(false);
-  const [containers, setContainers] = useState<Container[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  function handleToggle(e: React.SyntheticEvent<HTMLDetailsElement>) {
-    const isOpen = e.currentTarget.open;
-    setOpen(isOpen);
-    if (isOpen && !containers && !error) {
-      fetch("/api/containers")
-        .then((res) => res.json())
-        .then((json) => {
-          if (Array.isArray(json)) {
-            setContainers(json);
-          } else {
-            setError(json.error ?? "取得に失敗しました");
-          }
-        })
-        .catch(() => setError("通信エラーが発生しました"));
-    }
-  }
-
-  return (
-    <details
-      className="rounded-lg border border-navy/20 p-4"
-      onToggle={handleToggle}
-    >
-      <summary className="cursor-pointer font-semibold text-navy">
-        容器マスタ一覧{containers ? `（${containers.length}件）` : ""}
-      </summary>
-      <div className="mt-3 flex flex-col gap-3">
-        {open && error && <p className="text-sm text-red-600">{error}</p>}
-        {open && !error && !containers && <p className="text-sm">読み込み中...</p>}
-        {containers && containers.length === 0 && (
-          <p className="text-sm">まだデータがありません</p>
-        )}
-        {containers && containers.length > 0 && (
-          <div className="max-h-96 overflow-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-navy/20">
-                  <th className="py-1 pr-2">容器コード</th>
-                  <th className="py-1 pr-2">VESSEL</th>
-                  <th className="py-1 pr-2">払い出し場所</th>
-                </tr>
-              </thead>
-              <tbody>
-                {containers.map((c) => (
-                  <tr key={c.container_code} className="border-b border-navy/10">
-                    <td className="py-1 pr-2">{c.container_code}</td>
-                    <td className="py-1 pr-2">{c.vessel}</td>
-                    <td className="py-1 pr-2">{c.dispense_location}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </details>
   );
 }
 
