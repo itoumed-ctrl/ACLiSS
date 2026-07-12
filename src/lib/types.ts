@@ -35,4 +35,5 @@ export interface AccessLog {
   ip_address: string | null;
   user_agent: string | null;
   device_id: string | null;
+  event: string | null;
 }
