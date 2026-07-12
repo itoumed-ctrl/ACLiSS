@@ -77,7 +77,7 @@ export default function AdminPage() {
               type="password"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              className="mt-1 w-full rounded border border-navy/30 px-3 py-2"
+              className="mt-1 w-full rounded border border-navy/30 px-3 py-2 text-base"
               autoFocus
             />
           </label>
@@ -193,7 +193,7 @@ function ImportForm({
           type="text"
           value={importedBy}
           onChange={(e) => setImportedBy(e.target.value)}
-          className="mt-1 w-full rounded border border-navy/30 px-3 py-2"
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2 text-base"
         />
       </label>
       <button
@@ -264,7 +264,7 @@ function ImageUploadForm({ passcode }: { passcode: string }) {
           type="text"
           value={containerCode}
           onChange={(e) => setContainerCode(e.target.value)}
-          className="mt-1 w-full rounded border border-navy/30 px-3 py-2"
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2 text-base"
           placeholder="例: 121"
         />
       </label>
@@ -570,7 +570,7 @@ function ChangePasscodeForm({
           type="password"
           value={newPasscode}
           onChange={(e) => setNewPasscode(e.target.value)}
-          className="mt-1 w-full rounded border border-navy/30 px-3 py-2"
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2 text-base"
         />
       </label>
       <label className="text-sm">
@@ -579,7 +579,7 @@ function ChangePasscodeForm({
           type="password"
           value={confirmPasscode}
           onChange={(e) => setConfirmPasscode(e.target.value)}
-          className="mt-1 w-full rounded border border-navy/30 px-3 py-2"
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2 text-base"
         />
       </label>
       <button
