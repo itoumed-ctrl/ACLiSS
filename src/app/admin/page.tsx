@@ -185,6 +185,7 @@ function ImportForm({
         type="file"
         accept=".csv,text/csv"
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        className="w-full max-w-full"
       />
       <label className="text-sm">
         実行者名（任意、記録用）
@@ -271,6 +272,7 @@ function ImageUploadForm({ passcode }: { passcode: string }) {
         type="file"
         accept="image/*"
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        className="w-full max-w-full"
       />
       <button
         type="submit"
@@ -369,6 +371,7 @@ function BulkImageUploadForm({ passcode }: { passcode: string }) {
         accept="image/*"
         multiple
         onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+        className="w-full max-w-full"
       />
       {files.length > 0 && (
         <p className="text-sm text-foreground/70">{files.length}枚選択中</p>
@@ -467,11 +470,11 @@ function AccessLogList({ passcode }: { passcode: string }) {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-navy/20">
-                  <th className="py-1 pr-2">日時</th>
-                  <th className="py-1 pr-2">ページ</th>
-                  <th className="py-1 pr-2">端末ID</th>
-                  <th className="py-1 pr-2">IPアドレス</th>
-                  <th className="py-1 pr-2">ブラウザ情報</th>
+                  <th className="whitespace-nowrap py-1 pr-2">日時</th>
+                  <th className="whitespace-nowrap py-1 pr-2">ページ</th>
+                  <th className="whitespace-nowrap py-1 pr-2">端末ID</th>
+                  <th className="whitespace-nowrap py-1 pr-2">IPアドレス</th>
+                  <th className="whitespace-nowrap py-1 pr-2">ブラウザ情報</th>
                 </tr>
               </thead>
               <tbody>
