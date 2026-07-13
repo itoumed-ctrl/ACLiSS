@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AccessLog } from "@/lib/types";
 import { BackNav } from "@/components/BackNav";
+import {
+  clearFaceId,
+  hasFaceIdSetup,
+  isFaceIdAvailable,
+  setupFaceId,
+  unlockWithFaceId,
+  updateFaceIdPasscode,
+} from "@/lib/faceIdUnlock";
 
 const PASSCODE_STORAGE_KEY = "acliss-admin-passcode";
 
@@ -32,6 +40,8 @@ export default function AdminPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [faceIdBusy, setFaceIdBusy] = useState(false);
+  const [faceIdSetup, setFaceIdSetup] = useState(hasFaceIdSetup);
 
   useEffect(() => {
     const saved = readSavedPasscode();
@@ -56,6 +66,31 @@ export default function AdminPage() {
     }
   }
 
+  async function handleFaceIdUnlock() {
+    setFaceIdBusy(true);
+    setError(null);
+    const unlockedPasscode = await unlockWithFaceId();
+    if (!unlockedPasscode) {
+      setFaceIdBusy(false);
+      setError("Face ID / Touch IDでの解錠に失敗しました。合言葉を直接入力してください。");
+      return;
+    }
+    const ok = await verifyPasscode(unlockedPasscode);
+    setFaceIdBusy(false);
+    if (ok) {
+      sessionStorage.setItem(PASSCODE_STORAGE_KEY, unlockedPasscode);
+      setPasscode(unlockedPasscode);
+      setStatus("unlocked");
+    } else {
+      // 合言葉が変更された等、この端末に保存されている内容が古い
+      clearFaceId();
+      setFaceIdSetup(false);
+      setError(
+        "保存されている情報が古いようです。合言葉を入力し直し、Face ID解錠を設定し直してください。",
+      );
+    }
+  }
+
   if (status === "checking") {
     return (
       <div className="mx-auto max-w-sm px-4 py-16">
@@ -70,6 +105,16 @@ export default function AdminPage() {
       <div className="mx-auto max-w-sm px-4 py-16">
         <BackNav />
         <h1 className="mb-4 text-xl font-bold text-navy">ACLiSS 管理画面</h1>
+        {faceIdSetup && (
+          <button
+            type="button"
+            onClick={handleFaceIdUnlock}
+            disabled={faceIdBusy}
+            className="mb-4 w-full rounded border-2 border-navy px-4 py-3 font-semibold text-navy disabled:opacity-50"
+          >
+            {faceIdBusy ? "認証中..." : "Face ID / Touch IDで開く"}
+          </button>
+        )}
         <form onSubmit={handleUnlock} className="flex flex-col gap-3">
           <label className="text-sm">
             合言葉（パスコード）
@@ -97,22 +142,39 @@ export default function AdminPage() {
   function handlePasscodeChange(newPasscode: string) {
     sessionStorage.setItem(PASSCODE_STORAGE_KEY, newPasscode);
     setPasscode(newPasscode);
+    updateFaceIdPasscode(newPasscode);
   }
 
-  return <AdminDashboard passcode={passcode} onPasscodeChange={handlePasscodeChange} />;
+  return (
+    <AdminDashboard
+      passcode={passcode}
+      onPasscodeChange={handlePasscodeChange}
+      faceIdSetup={faceIdSetup}
+      onFaceIdSetupChange={setFaceIdSetup}
+    />
+  );
 }
 
 function AdminDashboard({
   passcode,
   onPasscodeChange,
+  faceIdSetup,
+  onFaceIdSetupChange,
 }: {
   passcode: string;
   onPasscodeChange: (newPasscode: string) => void;
+  faceIdSetup: boolean;
+  onFaceIdSetupChange: (setup: boolean) => void;
 }) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8">
       <BackNav />
       <h1 className="text-xl font-bold text-navy">ACLiSS 管理画面</h1>
+      <FaceIdSetupPanel
+        passcode={passcode}
+        faceIdSetup={faceIdSetup}
+        onFaceIdSetupChange={onFaceIdSetupChange}
+      />
       <ImportForm
         title="容器マスタCSVのアップロード（材料シート）"
         type="containers"
@@ -127,6 +189,84 @@ function AdminDashboard({
       <BulkImageUploadForm passcode={passcode} />
       <AccessLogList passcode={passcode} />
       <ChangePasscodeForm passcode={passcode} onPasscodeChange={onPasscodeChange} />
+    </div>
+  );
+}
+
+function FaceIdSetupPanel({
+  passcode,
+  faceIdSetup,
+  onFaceIdSetupChange,
+}: {
+  passcode: string;
+  faceIdSetup: boolean;
+  onFaceIdSetupChange: (setup: boolean) => void;
+}) {
+  const [available, setAvailable] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    isFaceIdAvailable().then(setAvailable);
+  }, []);
+
+  if (!available) return null;
+
+  async function handleSetup() {
+    setBusy(true);
+    setMessage(null);
+    const ok = await setupFaceId(passcode);
+    setBusy(false);
+    if (ok) {
+      onFaceIdSetupChange(true);
+      setMessage("この端末でFace ID / Touch IDによる解錠を設定しました。");
+    } else {
+      setMessage("設定に失敗しました。もう一度お試しください。");
+    }
+  }
+
+  function handleClear() {
+    clearFaceId();
+    onFaceIdSetupChange(false);
+    setMessage("この端末のFace ID / Touch ID設定を解除しました。");
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-navy/20 p-4 text-sm">
+      {faceIdSetup ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-foreground/70">
+            ✓ この端末はFace ID / Touch IDで解錠できます
+          </span>
+          <button
+            type="button"
+            onClick={handleClear}
+            className="shrink-0 text-navy underline"
+          >
+            解除する
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-foreground/70">
+            次回から合言葉の代わりにFace ID / Touch IDで開けるようにできます
+          </span>
+          <button
+            type="button"
+            onClick={handleSetup}
+            disabled={busy}
+            className="shrink-0 rounded bg-navy px-3 py-1.5 font-semibold text-white disabled:opacity-50"
+          >
+            {busy ? "設定中..." : "設定する"}
+          </button>
+        </div>
+      )}
+      {!faceIdSetup && (
+        <p className="text-xs text-foreground/50">
+          設定すると、合言葉がこの端末に保存されます。共用端末では設定しないでください。
+        </p>
+      )}
+      {message && <p className="text-xs text-foreground/60">{message}</p>}
     </div>
   );
 }
