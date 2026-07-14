@@ -15,7 +15,7 @@ export function MaintenanceScreen({ message }: { message: string | null }) {
       <Link
         href="/admin"
         prefetch={false}
-        className="mt-6 text-sm text-foreground/50 underline"
+        className="mt-6 inline-block min-h-11 min-w-11 px-4 py-3 text-sm text-foreground/50 underline"
       >
         管理者はこちら
       </Link>
