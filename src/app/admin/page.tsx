@@ -663,6 +663,7 @@ function AccessLogList({ passcode }: { passcode: string }) {
   const [open, setOpen] = useState(false);
   const [logs, setLogs] = useState<AccessLog[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 端末IDは長いUUIDなので、表示ではこの一覧内で最初に登場した順に1,2,3...と振り直す。
   const deviceNumbers = useMemo(() => {
@@ -677,21 +678,32 @@ function AccessLogList({ passcode }: { passcode: string }) {
     return map;
   }, [logs]);
 
+  function fetchLogs() {
+    return fetch("/api/admin/access-logs", { headers: { "x-admin-passcode": passcode } })
+      .then((res) => res.json())
+      .then((json) => {
+        if (Array.isArray(json)) {
+          setLogs(json);
+          setError(null);
+        } else {
+          setError(json.error ?? "取得に失敗しました");
+        }
+      })
+      .catch(() => setError("通信エラーが発生しました"));
+  }
+
   function handleToggle(e: React.SyntheticEvent<HTMLDetailsElement>) {
     const isOpen = e.currentTarget.open;
     setOpen(isOpen);
     if (isOpen && !logs && !error) {
-      fetch("/api/admin/access-logs", { headers: { "x-admin-passcode": passcode } })
-        .then((res) => res.json())
-        .then((json) => {
-          if (Array.isArray(json)) {
-            setLogs(json);
-          } else {
-            setError(json.error ?? "取得に失敗しました");
-          }
-        })
-        .catch(() => setError("通信エラーが発生しました"));
+      fetchLogs();
     }
+  }
+
+  function handleRefresh(e: React.MouseEvent) {
+    e.preventDefault();
+    setRefreshing(true);
+    fetchLogs().finally(() => setRefreshing(false));
   }
 
   return (
@@ -699,8 +711,18 @@ function AccessLogList({ passcode }: { passcode: string }) {
       className="rounded-lg border border-navy/20 p-4"
       onToggle={handleToggle}
     >
-      <summary className="cursor-pointer font-semibold text-navy">
-        アクセスログ（直近200件）
+      <summary className="flex cursor-pointer items-center justify-between gap-3 font-semibold text-navy">
+        <span>アクセスログ（直近200件）</span>
+        {open && (
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="rounded border border-navy/30 px-2 py-1 text-xs font-normal text-navy disabled:opacity-50"
+          >
+            {refreshing ? "更新中..." : "🔄 最新化"}
+          </button>
+        )}
       </summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-foreground/70">
