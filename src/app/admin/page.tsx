@@ -700,7 +700,7 @@ function AccessLogList({ passcode }: { passcode: string }) {
       onToggle={handleToggle}
     >
       <summary className="cursor-pointer font-semibold text-navy">
-        アクセスログ（直近50件）
+        アクセスログ（直近200件）
       </summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-foreground/70">

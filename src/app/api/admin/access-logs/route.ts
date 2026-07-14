@@ -31,13 +31,13 @@ export async function GET(request: Request) {
         .select(select)
         .eq("path", "/admin")
         .order("accessed_at", { ascending: false })
-        .limit(50),
+        .limit(200),
       supabaseAdmin
         .from("access_logs")
         .select(select)
         .like("path", "/containers/%")
         .order("accessed_at", { ascending: false })
-        .limit(50),
+        .limit(200),
     ]);
 
     if (adminLogs.error) {
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
     const data = [...(adminLogs.data ?? []), ...(containerDetailLogs.data ?? [])]
       .sort((a, b) => (a.accessed_at < b.accessed_at ? 1 : -1))
-      .slice(0, 50);
+      .slice(0, 200);
 
     return NextResponse.json(data);
   } catch (e) {
