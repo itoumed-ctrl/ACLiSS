@@ -704,14 +704,12 @@ function AccessLogList({ passcode }: { passcode: string }) {
       </summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className="text-sm text-foreground/70">
-          容器詳細（バーコード・容器一覧・検査項目検索のどこから開いても対象）と、
-          管理画面に入った時のみ表示しています
-          （トップページ・容器一覧・検査項目検索の一覧表示自体は件数が多くなるため非表示。
-          記録自体はすべて保存しています）。
+          「管理画面の合言葉認証に成功した時」「容器詳細を開いた時」（バーコード・容器一覧・
+          検査項目検索のどこから開いても対象）「最低採血量計算ツールを開いた時」のみ
+          表示しています
+          （トップページ・容器一覧・検査項目検索の一覧表示、管理画面を開いただけで
+          認証が通っていない記録は件数が多くなるため非表示。記録自体はすべて保存しています）。
           閲覧側に合言葉認証をかけていないため、不審なアクセスがないか確認する目的です。
-          管理画面（/admin）の行は「結果」欄で、合言葉認証に実際に成功したのか
-          （ログイン成功）、単に画面を開いただけで認証は通っていないのか
-          （画面を開いただけ）を区別できます。
           端末IDはCookieで発行する匿名の値で、IPアドレスが変わっても同じ端末からの
           アクセスかどうかの判断に使えます（個人を特定するものではなく、Cookieが
           消えると別のIDになります）。表示上は元の値が長いため、この一覧内に
@@ -743,8 +741,6 @@ function AccessLogList({ passcode }: { passcode: string }) {
                     <td className="whitespace-nowrap py-1 pr-2 text-xs">
                       {log.event === "admin_login_success" ? (
                         <span className="text-green-700">ログイン成功</span>
-                      ) : log.path === "/admin" ? (
-                        <span className="text-foreground/40">画面を開いただけ</span>
                       ) : (
                         "-"
                       )}
