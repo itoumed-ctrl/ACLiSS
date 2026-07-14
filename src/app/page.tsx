@@ -2,34 +2,39 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-10">
-      <h1 className="mb-2 text-2xl font-bold text-navy">容器を調べる</h1>
+    <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-10">
+      <section className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold text-navy">容器を調べる</h1>
+        <HomeButton
+          href="/scan"
+          title="バーコードをスキャン"
+          description="スマホのカメラでバーコードを読み取ります"
+        />
+        <HomeButton
+          href="/containers"
+          title="容器一覧から選ぶ"
+          description="容器コードや種類から探します"
+        />
+        <HomeButton
+          href="/search"
+          title="検査項目から探す"
+          description="検査項目名で検索します"
+        />
+      </section>
 
-      <HomeButton
-        href="/scan"
-        title="バーコードをスキャン"
-        description="スマホのカメラでバーコードを読み取ります"
-      />
-      <HomeButton
-        href="/containers"
-        title="容器一覧から選ぶ"
-        description="容器コードや種類から探します"
-      />
-      <HomeButton
-        href="/search"
-        title="検査項目から探す"
-        description="検査項目名で検索します"
-      />
-      <HomeButton
-        href="/blood-volume"
-        title="最低採血量を計算する"
-        description="検査項目を選ぶと必要な採血量が分かります"
-      />
+      <section className="flex flex-col gap-4">
+        <h2 className="text-2xl font-bold text-navy">検査を調べる</h2>
+        <HomeButton
+          href="/blood-volume"
+          title="最低採血量を計算する"
+          description="検査項目を選ぶと必要な採血量が分かります"
+        />
+      </section>
 
       <Link
         href="/admin"
         prefetch={false}
-        className="mt-6 self-center text-sm text-foreground/50 underline"
+        className="self-center text-sm text-foreground/50 underline"
       >
         管理者はこちら
       </Link>
