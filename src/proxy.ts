@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { logAccess } from "@/lib/supabase-admin";
+import { getMaintenanceStatus, logAccess } from "@/lib/supabase-admin";
 
 const DEVICE_ID_COOKIE = "acliss_device_id";
 const DEVICE_ID_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 2; // 2年
@@ -50,12 +50,28 @@ export default async function proxy(request: NextRequest) {
     });
   }
 
-  // レイアウト側でメンテナンス表示の要否を判定できるよう、
-  // 現在のパスをリクエストヘッダーに載せて渡す。
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  // メンテナンス中は、管理画面（/admin）以外を/maintenanceへ誘導する。
+  // 以前はレイアウト（共通の親コンポーネント）側でこれを判定していたが、
+  // Next.jsのクライアント側ナビゲーションでは共通レイアウトが再利用され、
+  // 遷移先ごとに再評価されないことがあり、「リンクは反応しているのに
+  // 画面が切り替わらない」という不具合になっていた。リクエストごとに
+  // 必ず実行されるproxy（ミドルウェア）側でリダイレクトする方式にして、
+  // どの遷移方法でも確実に反映されるようにする。
+  const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
+  let response: NextResponse;
+  if (!isAdminPath) {
+    const { enabled } = await getMaintenanceStatus();
+    if (enabled) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/maintenance";
+      response = NextResponse.redirect(url);
+    } else {
+      response = NextResponse.next();
+    }
+  } else {
+    response = NextResponse.next();
+  }
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
   if (!existingDeviceId) {
     response.cookies.set(DEVICE_ID_COOKIE, deviceId, {
       maxAge: DEVICE_ID_MAX_AGE_SECONDS,
