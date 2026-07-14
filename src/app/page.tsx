@@ -20,6 +20,11 @@ export default function Home() {
         title="検査項目から探す"
         description="検査項目名で検索します"
       />
+      <HomeButton
+        href="/blood-volume"
+        title="最低採血量を計算する"
+        description="検査項目を選ぶと必要な採血量が分かります"
+      />
 
       <Link
         href="/admin"

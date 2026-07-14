@@ -60,6 +60,7 @@ ACLiSS/
 │   │   ├── containers/page.tsx      容器一覧・検索画面
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
 │   │   ├── search/page.tsx          検査項目検索画面
+│   │   ├── blood-volume/page.tsx    最低採血量計算ツール（項目を選ぶと容器ごとの必要量を表示）
 │   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・アクセスログ・パスワード変更）
 │   │   └── api/
 │   │       ├── containers/route.ts          GET 容器一覧
@@ -82,6 +83,7 @@ ACLiSS/
 │       ├── supabase-admin.ts  Supabaseクライアント（管理画面専用・書き込み権限あり・合言葉照合）
 │       ├── useMasterData.ts   容器・検査項目一覧を取得し、localStorageにもキャッシュするフック
 │       ├── barcode.ts         バーコード12桁 → 容器コード3桁 変換ロジック
+│       ├── bloodVolume.ts     最低採血量の項目データと計算ロジック（Excelのルールをコード化）
 │       └── types.ts           Container / TestItem の型定義
 ├── public/
 │   ├── sw.js               Service Worker本体
