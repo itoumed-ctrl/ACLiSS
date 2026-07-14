@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { headers } from "next/headers";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { MaintenanceScreen } from "@/components/MaintenanceScreen";
+import { getMaintenanceStatus } from "@/lib/supabase-admin";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,11 +41,21 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // メンテナンス中は閲覧側の画面を止める。ただし管理画面（/admin）は
+  // メンテナンスを解除できるよう対象外にする。
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const isAdmin = pathname.startsWith("/admin");
+
+  let maintenance = { enabled: false, message: null as string | null };
+  if (!isAdmin) {
+    maintenance = await getMaintenanceStatus();
+  }
+
   return (
     <html
       lang="ja"
@@ -61,7 +74,13 @@ export default function RootLayout({
             </span>
           </div>
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="flex-1">
+          {maintenance.enabled ? (
+            <MaintenanceScreen message={maintenance.message} />
+          ) : (
+            children
+          )}
+        </main>
       </body>
     </html>
   );

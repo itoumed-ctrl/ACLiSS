@@ -61,7 +61,7 @@ ACLiSS/
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
 │   │   ├── search/page.tsx          検査項目検索画面
 │   │   ├── blood-volume/page.tsx    最低採血量計算ツール（項目を選ぶと容器ごとの必要量を表示）
-│   │   ├── admin/page.tsx   管理画面（合言葉入力→CSV・写真アップロード・アクセスログ・パスワード変更）
+│   │   ├── admin/page.tsx   管理画面（合言葉入力→メンテナンス切替・CSV・写真アップロード・アクセスログ・パスワード変更）
 │   │   └── api/
 │   │       ├── containers/route.ts          GET 容器一覧
 │   │       ├── containers/[code]/route.ts   GET 容器詳細
@@ -70,6 +70,7 @@ ACLiSS/
 │   │           ├── import/route.ts          POST CSV取り込み（合言葉必須）
 │   │           ├── upload-image/route.ts    POST 容器写真アップロード（合言葉必須）
 │   │           ├── change-passcode/route.ts POST 管理画面の合言葉を変更（合言葉必須）
+│   │           ├── maintenance/route.ts     GET/POST メンテナンス状態の取得・切替（合言葉必須）
 │   │           └── access-logs/route.ts     GET アクセスログ取得（合言葉必須）
 │   ├── components/
 │   │   ├── ContainerDetail.tsx        容器詳細の共通表示コンポーネント

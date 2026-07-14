@@ -60,6 +60,56 @@ export async function changeAdminPasscode(newPasscode: string): Promise<void> {
   if (error) throw error;
 }
 
+export interface MaintenanceStatus {
+  enabled: boolean;
+  message: string | null;
+}
+
+/**
+ * 現在のメンテナンス状態を取得する。
+ * Supabase未接続時や未設定時は「メンテナンスではない」として扱い、
+ * 閲覧側の画面表示を止めないようにする。
+ */
+export async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
+  try {
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { data } = await supabaseAdmin
+      .from("admin_settings")
+      .select("maintenance_mode, maintenance_message")
+      .eq("id", true)
+      .maybeSingle();
+
+    return {
+      enabled: Boolean(data?.maintenance_mode),
+      message: data?.maintenance_message ?? null,
+    };
+  } catch {
+    return { enabled: false, message: null };
+  }
+}
+
+/**
+ * メンテナンス状態を変更する（管理画面から呼ぶ）。
+ * admin_settings の行がまだ無い場合（合言葉を一度も変更しておらず環境変数で
+ * 運用しているケース）でも作成できるよう、照合済みの現在の合言葉ハッシュも
+ * 併せて upsert する。合言葉は正しいものなので上書きしても内容は変わらない。
+ */
+export async function setMaintenanceStatus(
+  enabled: boolean,
+  message: string | null,
+  currentPasscode: string,
+): Promise<void> {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const { error } = await supabaseAdmin.from("admin_settings").upsert({
+    id: true,
+    passcode_hash: hashPasscode(currentPasscode),
+    maintenance_mode: enabled,
+    maintenance_message: message,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
+
 /**
  * 閲覧側画面のアクセスを記録する。ログ記録自体の失敗は画面表示に影響させない。
  */

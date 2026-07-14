@@ -50,7 +50,12 @@ export default async function proxy(request: NextRequest) {
     });
   }
 
-  const response = NextResponse.next();
+  // レイアウト側でメンテナンス表示の要否を判定できるよう、
+  // 現在のパスをリクエストヘッダーに載せて渡す。
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   if (!existingDeviceId) {
     response.cookies.set(DEVICE_ID_COOKIE, deviceId, {
       maxAge: DEVICE_ID_MAX_AGE_SECONDS,

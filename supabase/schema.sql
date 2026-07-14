@@ -76,10 +76,15 @@ create table if not exists admin_settings (
   id boolean primary key default true,
   passcode_hash text not null,
   updated_at timestamptz not null default now(),
+  maintenance_mode boolean not null default false, -- 閲覧側をメンテナンス中表示にするか
+  maintenance_message text,                        -- メンテナンス中に表示する任意メッセージ
   constraint admin_settings_single_row check (id)
 );
 
-comment on table admin_settings is '管理画面の合言葉（ハッシュ値のみ）。常に1行だけ存在する。';
+alter table admin_settings add column if not exists maintenance_mode boolean not null default false;
+alter table admin_settings add column if not exists maintenance_message text;
+
+comment on table admin_settings is '管理画面の合言葉（ハッシュ値のみ）とメンテナンス状態。常に1行だけ存在する。';
 
 -- ============================================================
 -- 閲覧側画面のアクセスログ（いつ・どのページに・どこから）

@@ -175,6 +175,7 @@ function AdminDashboard({
         faceIdSetup={faceIdSetup}
         onFaceIdSetupChange={onFaceIdSetupChange}
       />
+      <MaintenancePanel passcode={passcode} />
       <ImportForm
         title="容器マスタCSVのアップロード（材料シート）"
         type="containers"
@@ -189,6 +190,117 @@ function AdminDashboard({
       <BulkImageUploadForm passcode={passcode} />
       <AccessLogList passcode={passcode} />
       <ChangePasscodeForm passcode={passcode} onPasscodeChange={onPasscodeChange} />
+    </div>
+  );
+}
+
+function MaintenancePanel({ passcode }: { passcode: string }) {
+  const [enabled, setEnabled] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/maintenance", { headers: { "x-admin-passcode": passcode } })
+      .then((res) => res.json())
+      .then((json) => {
+        if (typeof json.enabled === "boolean") {
+          setEnabled(json.enabled);
+          setMessage(json.message ?? "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [passcode]);
+
+  async function save(nextEnabled: boolean) {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/maintenance", {
+        method: "POST",
+        headers: { "x-admin-passcode": passcode, "content-type": "application/json" },
+        body: JSON.stringify({ enabled: nextEnabled, message }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setStatus(`エラー: ${json.error ?? "変更に失敗しました"}`);
+      } else {
+        setEnabled(nextEnabled);
+        setStatus(
+          nextEnabled
+            ? "メンテナンス中にしました。閲覧側にはメンテナンス画面が表示されます。"
+            : "メンテナンスを解除しました。",
+        );
+      }
+    } catch {
+      setStatus("通信エラーが発生しました");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4">
+      <h2 className="font-semibold text-navy">メンテナンスモード</h2>
+      <p className="text-sm text-foreground/70">
+        オンにすると、看護師が使う画面（トップ・スキャン・容器一覧・検査項目検索・最低採血量）は
+        メンテナンス中の表示になります。この管理画面は引き続き使えます。
+      </p>
+
+      <div
+        className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-semibold ${
+          enabled ? "bg-red-50 text-red-700" : "bg-navy/5 text-navy"
+        }`}
+      >
+        <span>
+          現在の状態：{loading ? "確認中..." : enabled ? "メンテナンス中" : "通常運用中"}
+        </span>
+      </div>
+
+      <label className="text-sm">
+        メンテナンス中に表示するメッセージ（任意）
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={2}
+          placeholder="ただいまメンテナンス中です。しばらくお待ちください。"
+          className="mt-1 w-full rounded border border-navy/30 px-3 py-2 text-base"
+        />
+      </label>
+
+      {enabled ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => save(true)}
+            disabled={busy || loading}
+            className="rounded border-2 border-navy px-4 py-2 font-semibold text-navy disabled:opacity-50"
+          >
+            {busy ? "保存中..." : "メッセージを更新"}
+          </button>
+          <button
+            type="button"
+            onClick={() => save(false)}
+            disabled={busy || loading}
+            className="rounded bg-navy px-4 py-2 font-semibold text-white disabled:opacity-50"
+          >
+            {busy ? "保存中..." : "メンテナンスを解除"}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => save(true)}
+          disabled={busy || loading}
+          className="self-start rounded bg-red-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? "保存中..." : "メンテナンス中にする"}
+        </button>
+      )}
+
+      {status && <p className="text-sm text-foreground/70">{status}</p>}
     </div>
   );
 }
