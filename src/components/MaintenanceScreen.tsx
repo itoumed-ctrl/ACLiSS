@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const DEFAULT_MESSAGE = "ただいまメンテナンス中です。しばらくお待ちください。";
 
 export function MaintenanceScreen({ message }: { message: string | null }) {
@@ -10,6 +12,13 @@ export function MaintenanceScreen({ message }: { message: string | null }) {
       <p className="whitespace-pre-wrap text-foreground/70">
         {message || DEFAULT_MESSAGE}
       </p>
+      <Link
+        href="/admin"
+        prefetch={false}
+        className="mt-6 text-sm text-foreground/50 underline"
+      >
+        管理者はこちら
+      </Link>
     </div>
   );
 }
