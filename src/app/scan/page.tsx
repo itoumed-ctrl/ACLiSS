@@ -36,6 +36,10 @@ const VIDEO_CONSTRAINTS: MediaTrackConstraints = {
 type ScanStatus = "initializing" | "scanning" | "success";
 type ScanEngine = "native" | "zxing" | null;
 
+function clamp01(n: number): number {
+  return Math.min(1, Math.max(0, n));
+}
+
 export default function ScanPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -47,6 +51,7 @@ export default function ScanPage() {
   const [lastScanned, setLastScanned] = useState<string | null>(null);
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
+  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
 
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const zxingControlsRef = useRef<import("@zxing/browser").IScannerControls | null>(null);
@@ -201,6 +206,57 @@ export default function ScanPage() {
     }
   }
 
+  // タップした位置にフォーカスを送る。対応端末（主にAndroid）では実際にその
+  // 位置へフォーカスが移動する。非対応端末（iPhoneのSafari等）ではブラウザが
+  // タップ位置でのフォーカス制御に対応していないため実際の効果は無いが、
+  // 何度もエラーにはならず、タップ自体がオートフォーカスの再試行のきっかけに
+  // なることもあるため、無害な形で試行する。
+  async function applyAdvancedConstraint(constraint: Record<string, unknown>) {
+    try {
+      const advanced = [constraint as unknown as MediaTrackConstraintSet];
+      if (engine === "native" && trackRef.current) {
+        await trackRef.current.applyConstraints({ advanced });
+      } else if (engine === "zxing") {
+        zxingControlsRef.current?.streamVideoConstraintsApply?.({ advanced });
+      }
+    } catch {
+      // 対応していない端末では何も起きないため無視してよい
+    }
+  }
+
+  function handleVideoTap(e: React.MouseEvent<HTMLVideoElement>) {
+    const video = e.currentTarget;
+    const rect = video.getBoundingClientRect();
+    const tapX = e.clientX - rect.left;
+    const tapY = e.clientY - rect.top;
+
+    // タップした場所にフォーカスリングを一瞬表示（対応端末かどうかに関わらず、
+    // タップが反応したことが分かるようにする）。
+    setFocusPoint({ x: tapX, y: tapY });
+    window.setTimeout(() => setFocusPoint(null), 700);
+
+    // <video>はobject-fit: coverで表示しているため、実際のカメラ映像の座標に
+    // 変換する（表示領域と映像本来の縦横比が異なると、はみ出た部分が
+    // トリミングされて表示されているため）。
+    const videoWidth = video.videoWidth || rect.width;
+    const videoHeight = video.videoHeight || rect.height;
+    const scale = Math.max(rect.width / videoWidth, rect.height / videoHeight);
+    const offsetX = (rect.width - videoWidth * scale) / 2;
+    const offsetY = (rect.height - videoHeight * scale) / 2;
+    const normalizedX = clamp01((tapX - offsetX) / (videoWidth * scale));
+    const normalizedY = clamp01((tapY - offsetY) / (videoHeight * scale));
+
+    applyAdvancedConstraint({
+      pointsOfInterest: [{ x: normalizedX, y: normalizedY }],
+      focusMode: "single-shot",
+    }).then(() => {
+      // 単発フォーカス後は、通常の連続オートフォーカスに戻す。
+      window.setTimeout(() => {
+        applyAdvancedConstraint({ focusMode: "continuous" });
+      }, 1200);
+    });
+  }
+
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = manualInput.trim();
@@ -222,6 +278,7 @@ export default function ScanPage() {
         <div className="relative mb-4">
           <video
             ref={videoRef}
+            onClick={handleVideoTap}
             className={`aspect-[4/3] w-full rounded-lg border-4 bg-black object-cover transition-colors ${
               status === "success" ? "border-green-500" : "border-navy/20"
             }`}
@@ -231,6 +288,12 @@ export default function ScanPage() {
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="h-1/3 w-4/5 rounded-lg border-2 border-gold/80" />
           </div>
+          {focusPoint && (
+            <div
+              className="pointer-events-none absolute h-16 w-16 rounded-full border-2 border-gold"
+              style={{ left: focusPoint.x, top: focusPoint.y, animation: "acliss-focus-ring 0.7s ease-out" }}
+            />
+          )}
           <div className="absolute left-0 right-0 top-2 flex justify-center">
             <StatusBadge status={status} />
           </div>

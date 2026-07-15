@@ -31,3 +31,15 @@ body {
      縦スクロールや、要素個別のoverflow-auto（表など）には影響しない。 */
   overflow-x: hidden;
 }
+
+/* バーコードスキャン画面: タップした位置に表示するフォーカスリングの演出 */
+@keyframes acliss-focus-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+  }
+}
