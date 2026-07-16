@@ -35,19 +35,14 @@ const VIDEO_CONSTRAINTS: MediaTrackConstraints = {
 
 type ScanStatus = "initializing" | "scanning" | "success";
 type ScanEngine = "native" | "zxing" | null;
-type ZoomRange = { min: number; max: number; step: number };
 
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
-// getCapabilities()/getSettings()の戻り値にzoom/torchは標準のlib.domの型に
-// 含まれていないため、必要な部分だけ緩く型付けする。
-type CameraCapabilities = {
-  torch?: boolean;
-  zoom?: { min: number; max: number; step: number };
-};
-type CameraSettings = { zoom?: number };
+// getCapabilities()の戻り値にtorchは標準のlib.domの型に含まれていないため、
+// 必要な部分だけ緩く型付けする。
+type CameraCapabilities = { torch?: boolean };
 
 export default function ScanPage() {
   const router = useRouter();
@@ -61,8 +56,6 @@ export default function ScanPage() {
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
-  const [zoomRange, setZoomRange] = useState<ZoomRange | null>(null);
-  const [zoomValue, setZoomValue] = useState(1);
 
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const zxingControlsRef = useRef<import("@zxing/browser").IScannerControls | null>(null);
@@ -85,19 +78,13 @@ export default function ScanPage() {
     }
 
     function inspectNativeCapabilities(track: MediaStreamTrack) {
-      // 以前はtorch対応時のみtrackを保持しており、torch非対応・zoom対応の
-      // 端末でズーム機能が使えなくなる不具合があったため、対応可否に関わらず
-      // 常に保持するようにする。
+      // タップフォーカス（pointsOfInterest）はtorch非対応端末でも使いたいため、
+      // 以前のようにtorch対応時のみでなく、常にtrackを保持しておく。
       trackRef.current = track;
       try {
         const capabilities = track.getCapabilities?.() as CameraCapabilities | undefined;
         if (capabilities?.torch) {
           setTorchSupported(true);
-        }
-        if (capabilities?.zoom) {
-          setZoomRange(capabilities.zoom);
-          const settings = track.getSettings?.() as CameraSettings | undefined;
-          setZoomValue(settings?.zoom ?? capabilities.zoom.min);
         }
       } catch {
         // 対応確認に失敗しても致命的ではないので無視する
@@ -185,13 +172,6 @@ export default function ScanPage() {
         if (capabilities?.torch) {
           setTorchSupported(true);
         }
-        if (capabilities?.zoom) {
-          setZoomRange(capabilities.zoom);
-          const settings = controls.streamVideoSettingsGet?.((track) => [track]) as
-            | CameraSettings
-            | undefined;
-          setZoomValue(settings?.zoom ?? capabilities.zoom.min);
-        }
       } catch {
         // 対応確認に失敗しても致命的ではないので無視する
       }
@@ -232,17 +212,6 @@ export default function ScanPage() {
     } catch {
       // 端末が対応していない場合は何もしない
     }
-  }
-
-  // 古い端末はカメラが至近距離にピントを合わせられないことが多く、バーコードに
-  // 近づきすぎるとかえって読み取れなくなる。少し離してズームで拡大できるように
-  // する（zoomはpointsOfInterestと異なりiOS Safariでも対応している）。
-  function adjustZoom(direction: 1 | -1) {
-    if (!zoomRange) return;
-    const step = Math.max(zoomRange.step, (zoomRange.max - zoomRange.min) / 5);
-    const next = Math.min(zoomRange.max, Math.max(zoomRange.min, zoomValue + direction * step));
-    setZoomValue(next);
-    applyAdvancedConstraint({ zoom: next });
   }
 
   // タップした位置にフォーカスを送る。対応端末（主にAndroid）では実際にその
@@ -347,38 +316,13 @@ export default function ScanPage() {
               {torchOn ? "💡 ライトを消す" : "💡 ライトをつける"}
             </button>
           )}
-          {zoomRange && (
-            <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-1 py-1 text-white">
-              <button
-                type="button"
-                onClick={() => adjustZoom(-1)}
-                disabled={zoomValue <= zoomRange.min}
-                className="h-8 w-8 rounded-full text-lg font-bold disabled:opacity-30"
-                aria-label="ズームを縮小"
-              >
-                −
-              </button>
-              <span className="px-1 text-xs">ズーム</span>
-              <button
-                type="button"
-                onClick={() => adjustZoom(1)}
-                disabled={zoomValue >= zoomRange.max}
-                className="h-8 w-8 rounded-full text-lg font-bold disabled:opacity-30"
-                aria-label="ズームを拡大"
-              >
-                ＋
-              </button>
-            </div>
-          )}
         </div>
       )}
 
       {!cameraError && status === "scanning" && (
         <p className="mb-4 text-center text-sm text-foreground/60">
           枠の中にバーコードを収めてください。
-          {zoomRange
-            ? "近づいてもピントが合わない場合は、少し離してズームで拡大してみてください。"
-            : "近づいてもピントが合わない場合は、少し離すと合いやすくなることがあります。"}
+          近づいてもピントが合わない場合は、少し離すと合いやすくなることがあります。
         </p>
       )}
 
