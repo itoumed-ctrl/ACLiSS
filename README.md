@@ -52,11 +52,11 @@ ACLiSS/
 │   ├── proxy.ts              アクセスログ記録（画面ブロックはしない）
 │   ├── app/
 │   │   ├── layout.tsx       共通レイアウト（ヘッダー・PWAメタ情報など）
-│   │   ├── page.tsx         トップページ（3つの導線ボタン）
+│   │   ├── page.tsx         トップページ（バーコードスキャンをその場で起動＋各画面への導線）
 │   │   ├── globals.css      全体のスタイル・ACLiSSの配色定義
 │   │   ├── manifest.ts      PWAのWebアプリマニフェスト
 │   │   ├── robots.ts        検索エンジン非公開設定
-│   │   ├── scan/page.tsx            バーコードスキャン画面
+│   │   ├── scan/page.tsx            バーコードスキャン画面（単独ページ版。中身はcomponents/BarcodeScanner.tsx）
 │   │   ├── containers/page.tsx      容器一覧・検索画面
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
 │   │   ├── search/page.tsx          検査項目検索画面
@@ -75,7 +75,8 @@ ACLiSS/
 │   ├── components/
 │   │   ├── ContainerDetail.tsx        容器詳細の共通表示コンポーネント
 │   │   ├── UpdatedAtNotice.tsx        「最終更新: ◯月◯日」表示
-│   │   └── ServiceWorkerRegister.tsx  Service Worker登録
+│   │   ├── ServiceWorkerRegister.tsx  Service Worker登録
+│   │   └── BarcodeScanner.tsx         バーコードスキャンの本体（トップページと/scanの両方から使う）
 │   └── lib/
 │       ├── config.ts         バックエンド（Supabase）の接続先を1箇所にまとめる設定ファイル
 │       │                      ※将来、院内イントラに移設する際もこのファイルの中身は変えず、

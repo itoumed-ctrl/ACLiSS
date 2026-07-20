@@ -1,15 +1,12 @@
 import Link from "next/link";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 
 export default function Home() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-10">
+    <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-6">
       <section className="flex flex-col gap-4">
         <h1 className="text-2xl font-bold text-navy">容器を調べる</h1>
-        <HomeButton
-          href="/scan"
-          title="バーコードをスキャン"
-          description="スマホのカメラでバーコードを読み取ります"
-        />
+        <BarcodeScanner />
         <HomeButton
           href="/containers"
           title="容器一覧から選ぶ"
@@ -22,7 +19,7 @@ export default function Home() {
         />
       </section>
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-4 border-t border-navy/10 pt-6">
         <h2 className="text-2xl font-bold text-navy">検査を調べる</h2>
         <HomeButton
           href="/blood-volume"
