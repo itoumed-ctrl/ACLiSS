@@ -315,13 +315,6 @@ export function BarcodeScanner() {
         </div>
       )}
 
-      {!cameraError && status === "scanning" && (
-        <p className="mb-4 text-center text-sm text-foreground/60">
-          枠の中にバーコードを収めてください。
-          近づいてもピントが合わない場合は、少し離すと合いやすくなることがあります。
-        </p>
-      )}
-
       {cameraError && (
         <p className="mb-4 rounded-lg bg-red-50 p-4 text-red-700">
           カメラを利用できません: {cameraError}
