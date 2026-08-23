@@ -68,6 +68,10 @@ ACLiSS/
 │   │       ├── test-items/route.ts          GET 検査項目一覧
 │   │       └── admin/
 │   │           ├── import/route.ts          POST CSV取り込み（合言葉必須）
+│   │           ├── containers/route.ts      POST 容器を1件追加・編集（合言葉必須）
+│   │           ├── containers/[code]/route.ts  DELETE 容器を1件削除（合言葉必須）
+│   │           ├── test-items/route.ts      POST 検査項目を1件追加・編集（合言葉必須）
+│   │           ├── test-items/[code]/route.ts  DELETE 検査項目を1件削除（合言葉必須）
 │   │           ├── upload-image/route.ts    POST 容器写真アップロード（合言葉必須）
 │   │           ├── change-passcode/route.ts POST 管理画面の合言葉を変更（合言葉必須）
 │   │           ├── maintenance/route.ts     GET/POST メンテナンス状態の取得・切替（合言葉必須）
@@ -76,7 +80,10 @@ ACLiSS/
 │   │   ├── ContainerDetail.tsx        容器詳細の共通表示コンポーネント
 │   │   ├── UpdatedAtNotice.tsx        「最終更新: ◯月◯日」表示
 │   │   ├── ServiceWorkerRegister.tsx  Service Worker登録
-│   │   └── BarcodeScanner.tsx         バーコードスキャンの本体（トップページと/scanの両方から使う）
+│   │   ├── BarcodeScanner.tsx         バーコードスキャンの本体（トップページと/scanの両方から使う）
+│   │   └── admin/
+│   │       ├── ContainerMasterPanel.tsx   容器マスタを1件ずつ検索・追加・編集・削除するUI
+│   │       └── TestItemMasterPanel.tsx    検査項目マスタを1件ずつ検索・追加・編集・削除するUI
 │   └── lib/
 │       ├── config.ts         バックエンド（Supabase）の接続先を1箇所にまとめる設定ファイル
 │       │                      ※将来、院内イントラに移設する際もこのファイルの中身は変えず、

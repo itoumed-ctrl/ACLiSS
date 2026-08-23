@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import type { AccessLog } from "@/lib/types";
 import { BackNav } from "@/components/BackNav";
+import { ContainerMasterPanel } from "@/components/admin/ContainerMasterPanel";
+import { TestItemMasterPanel } from "@/components/admin/TestItemMasterPanel";
 import {
   clearFaceId,
   hasFaceIdSetup,
@@ -186,6 +188,8 @@ function AdminDashboard({
         type="test_items"
         passcode={passcode}
       />
+      <ContainerMasterPanel passcode={passcode} />
+      <TestItemMasterPanel passcode={passcode} />
       <ImageUploadForm passcode={passcode} />
       <BulkImageUploadForm passcode={passcode} />
       <AccessLogList passcode={passcode} />
