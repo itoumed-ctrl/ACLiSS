@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getMaintenanceStatus, logAccess } from "@/lib/supabase-admin";
 
-const DEVICE_ID_COOKIE = "acliss_device_id";
-const DEVICE_ID_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 2; // 2年
-
 /**
  * 閲覧側画面のアクセスをログに記録する（アクセス制限は行わない）。
  * 閲覧側に認証をかけていない運用上のトレードオフを補うため、
@@ -13,11 +10,6 @@ const DEVICE_ID_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 2; // 2年
  * event.waitUntil は Node.jsランタイムのProxyでは応答送信後に処理が
  * 打ち切られ記録が完了しないことがあったため、確実に記録されるよう
  * ここで待ち受けてから応答する（多少の遅延より確実性を優先）。
- *
- * IPアドレスは端末が移動したりモバイル回線で変わったりするため、
- * Cookieで発行する匿名のランダムID（device_id）も併せて記録し、
- * IPが変わっても同じ端末からのアクセスだと分かるようにする。
- * 個人を特定する情報ではなく、Cookieが消えれば別IDになる。
  */
 export default async function proxy(request: NextRequest) {
   // トップページのリンクは画面に表示された時点でNext.jsが裏側で
@@ -32,9 +24,6 @@ export default async function proxy(request: NextRequest) {
     request.headers.get("purpose") === "prefetch" ||
     request.headers.get("sec-purpose")?.includes("prefetch");
 
-  const existingDeviceId = request.cookies.get(DEVICE_ID_COOKIE)?.value || null;
-  const deviceId = existingDeviceId || crypto.randomUUID();
-
   if (!isPrefetch) {
     const ipAddress =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -46,7 +35,6 @@ export default async function proxy(request: NextRequest) {
       path: request.nextUrl.pathname,
       ipAddress,
       userAgent,
-      deviceId,
     });
   }
 
@@ -58,31 +46,16 @@ export default async function proxy(request: NextRequest) {
   // 必ず実行されるproxy（ミドルウェア）側でリダイレクトする方式にして、
   // どの遷移方法でも確実に反映されるようにする。
   const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
-  let response: NextResponse;
   if (!isAdminPath) {
     const { enabled } = await getMaintenanceStatus();
     if (enabled) {
       const url = request.nextUrl.clone();
       url.pathname = "/maintenance";
-      response = NextResponse.redirect(url);
-    } else {
-      response = NextResponse.next();
+      return NextResponse.redirect(url);
     }
-  } else {
-    response = NextResponse.next();
   }
 
-  if (!existingDeviceId) {
-    response.cookies.set(DEVICE_ID_COOKIE, deviceId, {
-      maxAge: DEVICE_ID_MAX_AGE_SECONDS,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/",
-    });
-  }
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {

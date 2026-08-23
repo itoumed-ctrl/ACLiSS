@@ -117,7 +117,6 @@ export async function logAccess(entry: {
   path: string;
   ipAddress: string | null;
   userAgent: string | null;
-  deviceId: string | null;
   event?: string;
 }): Promise<void> {
   try {
@@ -126,7 +125,6 @@ export async function logAccess(entry: {
       path: entry.path,
       ip_address: entry.ipAddress,
       user_agent: entry.userAgent,
-      device_id: entry.deviceId,
       event: entry.event ?? null,
     });
   } catch {

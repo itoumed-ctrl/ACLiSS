@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
       request.headers.get("x-real-ip") ||
       null,
     userAgent: request.headers.get("user-agent"),
-    deviceId: request.cookies.get("acliss_device_id")?.value || null,
   });
 
   return NextResponse.json({ success: true });

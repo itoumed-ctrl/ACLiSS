@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     // （未認証）の記録は件数が多くなりすぎる／ノイズになるため除外する。
     // or()フィルタのlikeパターンはワイルドカードの扱いが分かりにくいため、
     // 条件ごとに分けて取得し、アプリ側でまとめて新しい順に並べ替える。
-    const select = "id, accessed_at, path, ip_address, user_agent, device_id, event";
+    const select = "id, accessed_at, path, ip_address, user_agent, event";
     const [adminLoginLogs, containerDetailLogs, bloodVolumeLogs] = await Promise.all([
       supabaseAdmin
         .from("access_logs")
