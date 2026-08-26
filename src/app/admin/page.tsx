@@ -400,6 +400,40 @@ function ImportForm({
   const [importedBy, setImportedBy] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const res = await fetch(`/api/admin/export?type=${type}`, {
+        headers: { "x-admin-passcode": passcode },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setDownloadError(json?.error ?? "ダウンロードに失敗しました");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition") ?? "";
+      const filenameMatch = disposition.match(/filename="([^"]+)"/);
+      const filename = filenameMatch?.[1] ?? `${type}.csv`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDownloadError("通信エラーが発生しました");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -437,6 +471,20 @@ function ImportForm({
       className="flex flex-col gap-3 rounded-lg border border-navy/20 p-4"
     >
       <h2 className="font-semibold text-navy">{title}</h2>
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={downloading}
+          className="self-start rounded border border-navy/30 px-3 py-1.5 text-sm text-navy disabled:opacity-50"
+        >
+          {downloading ? "ダウンロード中..." : "⬇ 現在のマスタをCSVでダウンロード"}
+        </button>
+        <p className="text-xs text-foreground/50">
+          ダウンロードしたCSVを編集して、下からそのままアップロードできます。
+        </p>
+        {downloadError && <p className="text-xs text-red-600">{downloadError}</p>}
+      </div>
       <input
         type="file"
         accept=".csv,text/csv"

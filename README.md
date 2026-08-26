@@ -68,6 +68,7 @@ ACLiSS/
 │   │       ├── test-items/route.ts          GET 検査項目一覧
 │   │       └── admin/
 │   │           ├── import/route.ts          POST CSV取り込み（合言葉必須）
+│   │           ├── export/route.ts          GET 現在のマスタをCSVでダウンロード（合言葉必須）
 │   │           ├── containers/route.ts      POST 容器を1件追加・編集（合言葉必須）
 │   │           ├── containers/[code]/route.ts  DELETE 容器を1件削除（合言葉必須）
 │   │           ├── test-items/route.ts      POST 検査項目を1件追加・編集（合言葉必須）
