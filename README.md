@@ -66,6 +66,7 @@ ACLiSS/
 │   │       ├── containers/route.ts          GET 容器一覧
 │   │       ├── containers/[code]/route.ts   GET 容器詳細
 │   │       ├── test-items/route.ts          GET 検査項目一覧
+│   │       ├── cron/keep-alive/route.ts     GET Supabaseの自動一時停止防止用（Vercel Cronから1日1回）
 │   │       └── admin/
 │   │           ├── import/route.ts          POST CSV取り込み（合言葉必須）
 │   │           ├── export/route.ts          GET 現在のマスタをCSVでダウンロード（合言葉必須）
@@ -107,6 +108,7 @@ ACLiSS/
 │   ├── security-overview.md    情報セキュリティ部門向け説明メモ
 │   └── phase1-master-data.md   マスタのExcel列⇔DBフィールド対応表
 ├── .env.local.example    環境変数の雛形（実際の値は .env.local に書き、Gitには含めない）
+├── vercel.json           Vercel Cronの設定（Supabaseの自動一時停止を防ぐため1日1回起動）
 └── package.json
 ```
 
@@ -132,6 +134,11 @@ HTTPS環境でのみ動作するため、Vercel等の本番URLで確認してく
 4. 実際の「ACLiSSマスタ.xlsx」と容器写真一式を、準備でき次第共有いただければ、
    Excel→CSV変換の手順もご案内します（まだで大丈夫です）。
 5. 正式なロゴ画像を共有いただければ、PWAアイコン・ヘッダーに反映します。
+6. Supabaseの自動一時停止（Freeプランは7日間無アクセスで停止）を防ぐため、
+   Vercelプロジェクトの「Settings → Environment Variables」で`CRON_SECRET`を追加してください
+   （値は自分で決めた適当な長い文字列でよい。`.env.local`には設定不要）。
+   `vercel.json`のCron設定は次のデプロイから自動的に有効になります
+   （Vercelダッシュボードの「Cron Jobs」で実行状況を確認できます）。
 
 ## QRコードの生成方法
 
