@@ -61,7 +61,10 @@ ACLiSS/
 │   │   ├── containers/[code]/page.tsx  容器詳細画面
 │   │   ├── search/page.tsx          検査項目検索画面
 │   │   ├── blood-volume/page.tsx    最低採血量計算ツール（項目を選ぶと容器ごとの必要量を表示）
-│   │   ├── admin/page.tsx   管理画面（合言葉入力→メンテナンス切替・CSV・写真アップロード・アクセスログ・パスワード変更）
+│   │   ├── admin/page.tsx          管理画面トップ（合言葉入力→Face ID設定・メンテナンス切替・
+│   │   │                             マスタ管理への導線・アクセスログ・パスワード変更）
+│   │   ├── admin/master/page.tsx   マスタ管理（CSV一括更新・容器/検査項目の個別編集・写真アップロード。
+│   │   │                             合言葉は/adminで解錠済みなら同じタブ内で再入力不要）
 │   │   └── api/
 │   │       ├── containers/route.ts          GET 容器一覧
 │   │       ├── containers/[code]/route.ts   GET 容器詳細
@@ -84,6 +87,7 @@ ACLiSS/
 │   │   ├── ServiceWorkerRegister.tsx  Service Worker登録
 │   │   ├── BarcodeScanner.tsx         バーコードスキャンの本体（トップページと/scanの両方から使う）
 │   │   └── admin/
+│   │       ├── AdminGate.tsx              管理画面共通の合言葉ゲート（/admin, /admin/master等で共用）
 │   │       ├── ContainerMasterPanel.tsx   容器マスタを1件ずつ検索・追加・編集・削除するUI
 │   │       └── TestItemMasterPanel.tsx    検査項目マスタを1件ずつ検索・追加・編集・削除するUI
 │   └── lib/
