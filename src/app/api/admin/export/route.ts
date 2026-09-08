@@ -5,7 +5,8 @@ import type { Container, TestItem } from "@/lib/types";
 
 // /api/admin/import が読み取る列名・順序と完全に一致させる。
 // image_url（写真アップロード専用の列）とupdated_at（サーバー管理）は
-// CSV一括更新の対象外のため含めない。
+// CSV一括更新の対象外のため含めない。image_path_raw（元データの院内共有
+// フォルダパス）はACLiSSでは使わないため列自体を廃止した。
 const CONTAINER_COLUMNS = [
   "container_code",
   "vessel",
@@ -23,7 +24,6 @@ const CONTAINER_COLUMNS = [
   "instruction_2",
   "instruction_3",
   "notes",
-  "image_path_raw",
   "image_source_code",
 ];
 
@@ -48,7 +48,6 @@ function toContainerCsvRow(c: Container): Record<string, string> {
     instruction_2: c.instruction_2 ?? "",
     instruction_3: c.instruction_3 ?? "",
     notes: c.notes ?? "",
-    image_path_raw: c.image_path_raw ?? "",
     image_source_code: c.image_source_code ?? "",
   };
 }

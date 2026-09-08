@@ -15,7 +15,6 @@ export interface Container {
   instruction_2: string | null;
   instruction_3: string | null;
   notes: string | null;
-  image_path_raw: string | null;
   image_source_code: string | null;
   image_url: string | null;
   updated_at: string;

@@ -5,7 +5,7 @@ function trimOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-// 容器を1件ずつ追加・編集する。image_url/image_path_rawは写真アップロード機能
+// 容器を1件ずつ追加・編集する。image_urlは写真アップロード機能
 // (upload-image, bulk-upload-image) 専用の列のため、ここでは一切触れない。
 // upsertは渡した列だけをSET句に含めるため、含めなければ既存の値がそのまま残る。
 export async function POST(request: Request) {

@@ -22,7 +22,6 @@ create table if not exists containers (
   instruction_2 text,
   instruction_3 text,
   notes text,                                -- 一般的な注意事項
-  image_path_raw text,                       -- 元データの院内共有フォルダパス（参考用、表示には使わない）
   image_source_code text,                    -- 実際に表示する画像を持つ容器コード（写真の使い回し先。
                                               -- 自分自身のコードと同じ場合は自分の写真を使う）
   image_url text,                            -- Supabaseストレージ上の容器写真URL（移行後に設定）
@@ -32,6 +31,8 @@ create table if not exists containers (
 -- 既存テーブルに対しては create table if not exists が効かないため、
 -- 列追加は別途ここで行う（何度実行しても壊れない）。
 alter table containers add column if not exists image_source_code text;
+-- image_path_raw（元データの院内共有フォルダパス）はACLiSSでは使わないため廃止。
+alter table containers drop column if exists image_path_raw;
 
 comment on table containers is '容器マスタ。患者個人情報・要配慮個人情報は一切含めない。';
 comment on column containers.collection_amount is 'Excel上で "----" だったものは「規定なし」という文字列として保存する';
