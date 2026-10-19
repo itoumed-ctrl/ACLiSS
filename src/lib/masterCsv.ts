@@ -1,6 +1,6 @@
 // マスタCSV（containers.csv / test_items.csv）の1行を、アプリで使う形に変換する。
-// 管理画面のCSV取り込み（/api/admin/import）と院内サーバー版（intranet/）の
-// 両方がこの変換を使うため、同じCSVがどちらでも同じ意味で読まれる。
+// 管理画面のCSV取り込み（/api/admin/import）が使う。院内サーバー版（intranet/）は
+// intranet/app.js に独自の読み込みを持ち、この変換は使わない。
 
 export type ContainerRow = {
   container_code?: string;

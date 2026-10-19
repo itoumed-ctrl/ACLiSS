@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" class="h-full antialiased">
+<html lang="ja">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,8 +13,17 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="app.css?v=__BUILD_ID__" />
   </head>
-  <body class="min-h-full bg-background text-foreground">
-    <div id="root" class="flex min-h-screen flex-col"></div>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="header-inner">
+          <a href="#/" class="brand">ACLiSS</a>
+          <span class="brand-bar" aria-hidden="true"></span>
+          <span class="brand-sub">臨床検査情報提供システム</span>
+        </div>
+      </header>
+      <main id="main"></main>
+    </div>
     <noscript>ACLiSSを使うには、ブラウザのJavaScriptを有効にしてください。</noscript>
     <script src="app.js?v=__BUILD_ID__"></script>
   </body>

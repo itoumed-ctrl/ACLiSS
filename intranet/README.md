@@ -22,11 +22,12 @@
 
 ```
 acliss/                  ← フォルダ名・置き場所は自由
-├── index.html           ← アプリ本体（以下3つも含めて上書きで更新）
+├── index.html           ← アプリ本体（以下も含めて上書きで更新）
 ├── app.js
 ├── app.css
 ├── manifest.webmanifest
 ├── icons/
+├── vendor/              ← バーコード読み取り部品（iPhoneなどで使用）
 ├── master/              ← マスタCSV（院内で管理）
 │   ├── containers.csv
 │   └── test_items.csv
@@ -77,13 +78,25 @@ acliss/                  ← フォルダ名・置き場所は自由
 
 ```bash
 npm install
-npm run build:intranet
+npm run build:intranet              # intranet-dist/ を作る
+npm run build:intranet -- --preview # あわせて開発確認用の1ファイル版 intranet-preview/ も作る
 ```
 
-本体（Next.js版）の画面部品（最低採血量の計算を除く）をそのまま使い、Next.js専用の部品（`next/link`・
-`next/navigation`）とデータの取得元（`@/lib/useMasterData`）だけを `intranet/src/` の
-ものに差し替えてビルドしています（`intranet/build.mjs`）。画面の切り替えはURLの `#` 以降で
-行うため、Webサーバー側にURL書き換えの設定は要りません。
+アプリ本体は、手書きの3ファイルだけでできています。React・Tailwind・TypeScriptなどは使わず、
+変換（バンドル）もしていません。Vercel版の画面部品とは共有していないため、院内サーバー版だけを
+変更しても、Vercel版には影響しません。
+
+| ファイル | 内容 |
+|---|---|
+| `intranet/index.html` | ヘッダーと、画面を入れる枠 |
+| `intranet/app.css` | 見た目（Vercel版と同じ配色・文字の大きさ・余白） |
+| `intranet/app.js` | CSVの読み込み・各画面・バーコードスキャン・画面の切り替え |
+
+`npm run build:intranet` は、この3ファイルにアイコンと、`node_modules` にあるバーコード読み取り
+部品（ZXing、`vendor/zxing-browser.min.js`）を添えて `intranet-dist/` に並べるだけです
+（`intranet/build.mjs`）。読み取り部品は、ブラウザ内蔵の読み取り（BarcodeDetector）が使えない
+端末でだけ読み込みます。画面の切り替えはURLの `#` 以降で行うため、Webサーバー側にURL書き換えの
+設定は要りません。
 
 ## 端末に残るもの
 

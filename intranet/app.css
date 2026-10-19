@@ -1,0 +1,470 @@
+/* ACLiSS 院内サーバー版の見た目。Vercel版と同じ配色・文字の大きさ・余白にしてある。
+   院内ネットワークから外部のフォント配信に頼らないよう、端末内のフォントで表示する。 */
+
+:root {
+  --navy: #203863;
+  --gold: #ffc000;
+  --fg: #171717;
+  --bg: #ffffff;
+  --navy-5: rgb(32 56 99 / 0.05);
+  --navy-10: rgb(32 56 99 / 0.1);
+  --navy-20: rgb(32 56 99 / 0.2);
+  --navy-30: rgb(32 56 99 / 0.3);
+  --navy-70: rgb(32 56 99 / 0.7);
+  --fg-50: rgb(23 23 23 / 0.5);
+  --fg-60: rgb(23 23 23 / 0.6);
+  --fg-70: rgb(23 23 23 / 0.7);
+  --fg-80: rgb(23 23 23 / 0.8);
+  --red-50: oklch(97.1% 0.013 17.38);
+  --red-600: oklch(57.7% 0.245 27.325);
+  --red-700: oklch(50.5% 0.213 27.518);
+  --green-500: oklch(72.3% 0.219 149.579);
+  --green-600: oklch(62.7% 0.194 149.214);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic UI", Meiryo, "Noto Sans JP", sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* ブラウザごとの初期の余白・枠線などを消す */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+}
+html {
+  height: 100%;
+  line-height: 1.5;
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  /* 機種によって要素の横幅がわずかに画面幅を超え、横スクロールできてしまうのを防ぐ */
+  overflow-x: hidden;
+}
+h1,
+p {
+  font-size: inherit;
+  font-weight: inherit;
+}
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+ul {
+  list-style: none;
+}
+img,
+video {
+  display: block;
+  max-width: 100%;
+}
+button,
+input {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  background: transparent;
+  border-radius: 0;
+}
+::placeholder {
+  color: var(--fg-50);
+  opacity: 1;
+}
+[hidden] {
+  display: none !important;
+}
+
+/* 全体の枠 */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+main {
+  flex: 1;
+}
+.header {
+  background: var(--navy);
+  color: #fff;
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+}
+.brand {
+  font-size: 1.25rem;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+.brand-bar {
+  width: 0.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  background: var(--gold);
+}
+.brand-sub {
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  color: rgb(255 255 255 / 0.8);
+}
+.page {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+/* 共通の部品 */
+.title {
+  font-size: 1.5rem;
+  line-height: calc(2 / 1.5);
+  font-weight: 700;
+  color: var(--navy);
+}
+.mb-4 {
+  margin-bottom: 1rem;
+}
+.back-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  color: var(--navy);
+  text-decoration: underline;
+}
+.sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 0 -1rem;
+  padding: 1.5rem 1rem 0.75rem;
+  background: var(--bg);
+}
+.field {
+  border: 1px solid var(--navy-30);
+  border-radius: 0.25rem;
+  padding: 0.75rem;
+  font-size: 1.125rem;
+  line-height: calc(1.75 / 1.125);
+}
+.sticky-head .field {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+.notice {
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+  line-height: calc(1 / 0.75);
+  color: var(--fg-60);
+}
+.muted {
+  color: var(--fg-60);
+}
+.empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--fg-60);
+}
+.error-text {
+  color: var(--red-600);
+}
+.alert {
+  border-radius: 0.5rem;
+  background: var(--red-50);
+  padding: 1rem;
+  color: var(--red-700);
+}
+
+/* トップ */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.home-button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 2px solid var(--navy-20);
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 1.25rem;
+}
+.home-button:active {
+  background: var(--navy-5);
+}
+.home-button-title {
+  font-size: 1.25rem;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--navy);
+}
+.home-button-desc {
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  color: var(--fg-70);
+}
+
+/* 容器一覧・検査項目検索の結果 */
+.list > li:not(:last-child) {
+  border-bottom: 1px solid var(--navy-10);
+}
+.list a {
+  display: flex;
+  padding: 0.75rem 0;
+}
+.list a:active {
+  background: var(--navy-5);
+}
+.container-link {
+  align-items: flex-start;
+  gap: 1rem;
+}
+.code-badge {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  border-radius: 0.25rem;
+  background: var(--navy-10);
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--navy);
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0;
+}
+.item-name,
+.container-name {
+  font-size: 1.125rem;
+  line-height: calc(1.75 / 1.125);
+  font-weight: 700;
+  color: var(--navy);
+}
+.item-sub {
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  color: var(--fg-70);
+}
+.item.unset {
+  color: var(--fg-50);
+}
+.item.unset .item-name {
+  font-weight: 400;
+  color: inherit;
+}
+.item.unset .item-sub {
+  color: inherit;
+}
+
+/* 容器詳細 */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.detail-code {
+  font-size: 1.875rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--navy);
+}
+.detail-name {
+  font-size: 1.25rem;
+  line-height: 1.4;
+  color: var(--fg-80);
+}
+.photo {
+  width: 100%;
+  max-height: 20rem;
+  object-fit: contain;
+  border: 1px solid var(--navy-20);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+.row-label {
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  font-weight: 600;
+  color: var(--navy-70);
+}
+.row-value,
+.box-body {
+  font-size: 1.125rem;
+  line-height: calc(1.75 / 1.125);
+}
+.row-value.big {
+  font-size: 1.5rem;
+  line-height: calc(2 / 1.5);
+  font-weight: 700;
+}
+.box {
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.box-title {
+  margin-bottom: 0.25rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+.box.instructions {
+  border: 2px solid var(--gold);
+  background: rgb(255 192 0 / 0.1);
+}
+.box.instructions .box-title {
+  margin-bottom: 0.5rem;
+}
+.box.instructions ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.box.instructions li:not(:last-child) {
+  margin-bottom: 0.25rem;
+}
+.box.notes {
+  border: 1px solid var(--navy-20);
+  background: var(--navy-5);
+}
+.box.notes .box-body {
+  white-space: pre-wrap;
+}
+
+/* バーコードスキャン */
+.camera {
+  position: relative;
+  margin-bottom: 1rem;
+}
+.camera video {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 4px solid var(--navy-20);
+  border-radius: 0.5rem;
+  background: #000;
+  transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.camera.success video {
+  border-color: var(--green-500);
+}
+.camera-guide {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.camera-guide::before {
+  content: "";
+  width: 80%;
+  height: 33.333%;
+  border: 2px solid rgb(255 192 0 / 0.8);
+  border-radius: 0.5rem;
+}
+.camera-status {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.6);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  color: #fff;
+}
+.camera.success .camera-status {
+  background: var(--green-600);
+  font-weight: 600;
+}
+.torch {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.6);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  font-weight: 600;
+  color: #fff;
+}
+.torch.on {
+  background: var(--gold);
+  color: var(--navy);
+}
+/* タップした位置に一瞬出すフォーカスリング */
+.focus-ring {
+  pointer-events: none;
+  position: absolute;
+  width: 4rem;
+  height: 4rem;
+  border: 2px solid var(--gold);
+  border-radius: 9999px;
+  animation: focus-ring 0.7s ease-out;
+}
+@keyframes focus-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0;
+  }
+}
+.scanned {
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  background: var(--navy-5);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  color: var(--navy);
+}
+.scanned span {
+  font-family: var(--font-mono);
+}
+.hint {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  color: var(--fg-70);
+}
+.manual {
+  display: flex;
+  gap: 0.5rem;
+}
+.manual .field {
+  flex: 1;
+}
+.manual button {
+  border-radius: 0.25rem;
+  background: var(--navy);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+.form-error {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: calc(1.25 / 0.875);
+  color: var(--red-600);
+}

@@ -1,73 +1,36 @@
 // 院内サーバー版のビルド。npm run build:intranet で intranet-dist/ に
 // 「そのまま院内サーバーへコピーすればよいフォルダ」を作る。
+// アプリ本体（index.html・app.js・app.css）は手書きのファイルをそのまま並べるだけで、変換はしない。
 // 外部のサーバー（Vercel・Supabase・CDN・Googleフォント）には一切つながらない。
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import * as esbuild from "esbuild";
-import postcss from "postcss";
-import tailwind from "@tailwindcss/postcss";
-
-process.env.NODE_ENV = "production";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const here = path.join(root, "intranet");
 const out = path.join(root, "intranet-dist");
 const buildId = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
 
-// 本体（Next.js版）の画面部品をそのまま使うため、Next.js専用の部品と
-// データの取得元（Supabase）だけを院内版のものに差し替える。
-const replacements = {
-  "next/link": path.join(here, "src/shims/next-link.tsx"),
-  "next/navigation": path.join(here, "src/shims/next-navigation.ts"),
-  "@/lib/useMasterData": path.join(here, "src/useMasterDataCsv.ts"),
-};
+// iPhoneなどブラウザ内蔵のバーコード読み取りがない端末で使う読み取り部品
+const zxingFile = path.join(root, "node_modules/@zxing/browser/umd/zxing-browser.min.js");
 
-const replacePlugin = {
-  name: "acliss-intranet-replacements",
-  setup(build) {
-    build.onResolve({ filter: /^(next\/link|next\/navigation|@\/lib\/useMasterData)$/ }, (args) => ({
-      path: replacements[args.path],
-    }));
-  },
-};
+// 端末に古いファイルが残らないよう、読み込むURLにビルドごとの番号を付ける
+async function readApp(file) {
+  return (await readFile(path.join(here, file), "utf8")).replaceAll("__BUILD_ID__", buildId);
+}
 
 await rm(out, { recursive: true, force: true });
-await mkdir(out, { recursive: true });
-
-await esbuild.build({
-  entryPoints: [path.join(here, "src/main.tsx")],
-  outfile: path.join(out, "app.js"),
-  bundle: true,
-  minify: true,
-  format: "iife",
-  target: ["es2020", "safari15"],
-  jsx: "automatic",
-  tsconfig: path.join(root, "tsconfig.json"),
-  define: { "process.env.NODE_ENV": '"production"' },
-  legalComments: "none",
-  plugins: [replacePlugin],
-  logLevel: "warning",
-});
-
-const cssSource = path.join(here, "styles.css");
-const css = await postcss([tailwind({ base: root, optimize: true })]).process(
-  await readFile(cssSource, "utf8"),
-  { from: cssSource },
-);
-await writeFile(path.join(out, "app.css"), css.css);
-
 await mkdir(path.join(out, "icons"), { recursive: true });
+await mkdir(path.join(out, "vendor"), { recursive: true });
+
+for (const file of ["index.html", "app.js", "app.css"]) {
+  await writeFile(path.join(out, file), await readApp(file));
+}
+await cp(path.join(here, "manifest.webmanifest"), path.join(out, "manifest.webmanifest"));
 for (const icon of ["icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
   await cp(path.join(root, "public/icons", icon), path.join(out, "icons", icon));
 }
-
-const html = (await readFile(path.join(here, "index.html"), "utf8")).replaceAll(
-  "__BUILD_ID__",
-  buildId,
-);
-await writeFile(path.join(out, "index.html"), html);
-await cp(path.join(here, "manifest.webmanifest"), path.join(out, "manifest.webmanifest"));
+await cp(zxingFile, path.join(out, "vendor/zxing-browser.min.js"));
 
 // マスタCSVと写真は院内で別管理するため、置き場所と説明だけを用意しておく。
 await mkdir(path.join(out, "master"), { recursive: true });
@@ -77,8 +40,8 @@ await cp(path.join(here, "placeholders/images-README.txt"), path.join(out, "imag
 
 console.log(`intranet-dist/ を作成しました（ビルド ${buildId}）`);
 
-// 開発中に画面を確認するための1ファイル版。サンプルのCSVと仮の写真を埋め込み、
-// サーバーに置かなくても開くだけで動く。院内サーバーに置くものではない。
+// 開発中に画面を確認するための1ファイル版。index.html に、CSS・JavaScript・サンプルのCSVと
+// 仮の写真を埋め込み、サーバーに置かなくても開くだけで動くようにする。院内サーバーに置くものではない。
 async function buildPreview() {
   const sampleDir = path.join(here, "preview");
   const files = {
@@ -91,28 +54,33 @@ async function buildPreview() {
       `data:image/svg+xml;charset=utf-8,${encodeURIComponent(drawSamplePhoto(code, photo))}`,
     ]),
   );
+  const inlineScript = (code) => `<script>${code.replace(/<\/(script)/gi, "<\\/$1")}</script>`;
   const previewData = JSON.stringify({ files, images }).replace(/</g, "\\u003c");
-  const appJs = (await readFile(path.join(out, "app.js"), "utf8")).replace(
-    /<\/(script)/gi,
-    "<\\/$1",
-  );
-  const appCss = await readFile(path.join(out, "app.css"), "utf8");
+  const scripts = [
+    `window.__ACLISS_PREVIEW__ = ${previewData};`,
+    await readFile(zxingFile, "utf8"),
+    await readApp("app.js"),
+  ];
 
-  const html = `<title>ACLiSS 院内版プレビュー</title>
-<style>${appCss}</style>
-<style>
-.acliss-preview-bar { background: #ffc000; color: #203863; font: 600 12px/1.5 -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif; padding: 6px 16px; text-align: center; }
-</style>
-<div class="acliss-preview-bar">開発用プレビュー：サンプルデータで表示しています。カメラはこの画面では使えません（ラベル数字の手入力は使えます）</div>
-<div id="root" class="flex min-h-screen flex-col"></div>
-<script>window.__ACLISS_PREVIEW__ = ${previewData};</script>
-<script>${appJs}</script>
-`;
+  // 置き換える文字列に「$」が含まれていても崩れないよう、関数で置き換える
+  const html = (await readApp("index.html"))
+    .replace("<title>ACLiSS</title>", () => "<title>ACLiSS 院内版プレビュー</title>")
+    .replace(/ *<link rel="(icon|apple-touch-icon|manifest)"[^>]*>\n/g, () => "");
+  const css = await readApp("app.css");
+  const page = html
+    .replace(/<link rel="stylesheet"[^>]*>/, () => `<style>${css}${PREVIEW_BAR_CSS}</style>`)
+    .replace("<body>", () => `<body>\n    ${PREVIEW_BAR}`)
+    .replace(/<script src="app\.js[^"]*"><\/script>/, () => scripts.map(inlineScript).join("\n"));
+
   const previewDir = path.join(root, "intranet-preview");
   await mkdir(previewDir, { recursive: true });
-  await writeFile(path.join(previewDir, "acliss-preview.html"), html);
+  await writeFile(path.join(previewDir, "acliss-preview.html"), page);
   console.log("intranet-preview/acliss-preview.html を作成しました");
 }
+
+const PREVIEW_BAR_CSS = `
+.preview-bar { background: #ffc000; color: #203863; font-size: 12px; font-weight: 600; padding: 6px 16px; text-align: center; }`;
+const PREVIEW_BAR = `<div class="preview-bar">開発用プレビュー：サンプルデータで表示しています。カメラはこの画面では使えません（ラベル数字の手入力は使えます）</div>`;
 
 const SAMPLE_PHOTOS = {
   "001": { kind: "tube", cap: "#7a4a25" },
