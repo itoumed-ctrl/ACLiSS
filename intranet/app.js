@@ -111,46 +111,60 @@
     const missing = requiredColumns.filter((c) => !columns.includes(c));
     if (missing.length > 0) {
       throw new Error(
-        `${path} の1行目（列名）に ${missing.join("、")} がありません。管理画面からダウンロードしたCSVと同じ列名にしてください。`,
+        `${path} の1行目（列名）に ${missing.join("、")} がありません。ひな型（ACLiSSマスタ.xlsx）と同じ列名にしてください。`,
       );
     }
     return { records, lastModified };
   }
 
-  // 空欄は null にする
+  // マスタの列名は、ひな型（ACLiSSマスタ.xlsx）の「材料」「オーダ可能項目」シートの1行目と同じ。
+  // 各シートをCSVで保存したものを containers.csv・test_items.csv として置く。
+
+  // 空欄・空白だけ・Excelの参照エラー（#N/A）は null にする
   function text(value) {
-    return (value || "").trim() || null;
+    const v = (value || "").trim();
+    return v && v !== "#N/A" ? v : null;
+  }
+
+  // 材料コードは3桁。ExcelでCSVを開き直すと先頭の0が消える（073 → 73）ため補う。
+  function code(value) {
+    const v = text(value);
+    return v && /^\d{1,2}$/.test(v) ? v.padStart(3, "0") : v;
+  }
+
+  // 内線番号の「-」は番号なし
+  function phone(value) {
+    const v = text(value);
+    return v === "-" ? null : v;
   }
 
   function toContainer(row) {
-    const code = text(row.container_code);
-    if (!code) return null;
-    const amount = text(row.collection_amount);
-    const imageCode = text(row.image_source_code);
+    const containerCode = code(row["材料コード"]);
+    if (!containerCode) return null;
+    const amount = text(row["規定採取量"]);
     return {
-      container_code: code,
-      vessel: text(row.vessel),
-      material: text(row.material),
-      dispense_location: text(row.dispense_location),
-      dispense_phs: text(row.dispense_phs),
-      inquiry_dept: text(row.inquiry_dept),
-      inquiry_phs: text(row.inquiry_phs),
+      container_code: containerCode,
+      vessel: text(row["VESSEL"]),
+      material: text(row["MATERIAL"]),
+      dispense_location: text(row["容器払い出し"]),
+      dispense_phs: phone(row["内線番号①"]),
+      inquiry_dept: text(row["問い合わせ先"]),
+      inquiry_phs: phone(row["内線番号②"]),
       collection_amount: amount === "----" ? "規定なし" : amount,
-      test_summary: text(row.test_summary),
-      has_instruction: text(row.has_instruction) === "1",
-      instructions: [row.instruction_1, row.instruction_2, row.instruction_3].map(text).filter(Boolean),
-      notes: text(row.notes),
-      image_url: imagePath(imageCode),
+      // 指示は、指示①〜③のどれかに文が入っていれば表示する
+      instructions: [row["指示①"], row["指示②"], row["指示③"]].map(text).filter(Boolean),
+      notes: text(row["注意事項"]),
+      image_url: imagePath(code(row["画像コード"])),
     };
   }
 
   function toTestItem(row) {
-    const code = text(row.test_item_code);
-    if (!code) return null;
+    const itemCode = text(row["項目コード"]);
+    if (!itemCode) return null;
     return {
-      test_item_code: code,
-      test_item_name: text(row.test_item_name) || "",
-      container_code: text(row.container_code),
+      test_item_code: itemCode,
+      test_item_name: text(row["名称"]) || "",
+      container_code: code(row["材料コード"]),
     };
   }
 
@@ -163,8 +177,8 @@
 
   async function loadMaster() {
     const [containersCsv, testItemsCsv] = await Promise.all([
-      fetchCsv(CONTAINERS_CSV, ["container_code"]),
-      fetchCsv(TEST_ITEMS_CSV, ["test_item_code", "test_item_name"]),
+      fetchCsv(CONTAINERS_CSV, ["材料コード"]),
+      fetchCsv(TEST_ITEMS_CSV, ["項目コード", "名称", "材料コード"]),
     ]);
 
     // 画面の「最終更新」には、読み込んだ時刻ではなくCSVファイル自体の更新日時を出す。
@@ -337,7 +351,7 @@
       const q = normalizeForSearch(input.value.trim());
       const found = q
         ? all.filter((c) =>
-            [c.container_code, c.vessel, c.material, c.test_summary, c.dispense_location]
+            [c.container_code, c.vessel, c.material, c.dispense_location]
               .filter(Boolean)
               .some((field) => normalizeForSearch(field).includes(q)),
           )
@@ -480,8 +494,7 @@
         c.dispense_location ? c.dispense_location + extension(c.dispense_phs) : "未設定",
         true,
       ),
-      c.test_summary && detailRow("検査項目", c.test_summary),
-      c.has_instruction &&
+      c.instructions.length > 0 &&
         h(
           "div",
           { class: "box instructions" },
