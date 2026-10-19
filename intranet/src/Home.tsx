@@ -1,7 +1,8 @@
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toHref } from "./router";
 
-// 本体のトップページと同じ構成。院内サーバー版には管理画面がないため、管理者リンクは置かない。
+// 本体のトップページと同じ構成。院内サーバー版には管理画面と最低採血量の計算がないため、
+// 管理者リンクと「検査を調べる」の欄は置かない。
 export function Home() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-6">
@@ -14,15 +15,6 @@ export function Home() {
           description="容器コードや種類から探します"
         />
         <HomeButton href="/search" title="検査項目から探す" description="検査項目名で検索します" />
-      </section>
-
-      <section className="flex flex-col gap-4 border-t border-navy/10 pt-6">
-        <h2 className="text-2xl font-bold text-navy">検査を調べる</h2>
-        <HomeButton
-          href="/blood-volume"
-          title="最低採血量を計算する"
-          description="検査項目を選ぶと必要な採血量が分かります"
-        />
       </section>
     </div>
   );

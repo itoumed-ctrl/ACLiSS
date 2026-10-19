@@ -2,7 +2,6 @@ import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import ContainersListPage from "@/app/containers/page";
 import TestItemSearchPage from "@/app/search/page";
-import BloodVolumePage from "@/app/blood-volume/page";
 import ScanPage from "@/app/scan/page";
 import { BackNav } from "@/components/BackNav";
 import { ContainerDetailRoute } from "./ContainerDetailRoute";
@@ -14,7 +13,6 @@ function CurrentPage({ path }: { path: string }) {
   if (path === "/scan") return <ScanPage />;
   if (path === "/containers") return <ContainersListPage />;
   if (path === "/search") return <TestItemSearchPage />;
-  if (path === "/blood-volume") return <BloodVolumePage />;
 
   const detail = path.match(/^\/containers\/([^/]+)$/);
   if (detail) return <ContainerDetailRoute code={decodeURIComponent(detail[1])} />;
