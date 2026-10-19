@@ -330,6 +330,7 @@ main {
 .box.instructions .box-title {
   margin-bottom: 0.5rem;
 }
+.box.instructions li:not(:last-child) {
   margin-bottom: 0.25rem;
 }
 .box.notes {
