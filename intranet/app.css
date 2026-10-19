@@ -330,11 +330,6 @@ main {
 .box.instructions .box-title {
   margin-bottom: 0.5rem;
 }
-.box.instructions ul {
-  list-style: disc;
-  padding-left: 1.25rem;
-}
-.box.instructions li:not(:last-child) {
   margin-bottom: 0.25rem;
 }
 .box.notes {
