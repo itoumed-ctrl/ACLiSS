@@ -498,7 +498,7 @@
         h(
           "div",
           { class: "box instructions" },
-          h("p", { class: "box-title" }, "採取指示"),
+          h("p", { class: "box-title" }, "指示ラベル"),
           h("ul", { class: "box-body" }, c.instructions.map((text) => h("li", {}, text))),
         ),
       c.notes &&
