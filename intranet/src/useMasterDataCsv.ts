@@ -50,14 +50,31 @@ function decodeCsv(buffer: ArrayBuffer): string {
   }
 }
 
-async function fetchCsv<T>(path: string, requiredColumns: string[]) {
+// 開発中の確認用プレビュー（npm run build:intranet -- --preview）だけが使う。
+// サーバーに置かず1ファイルで動かすため、CSVと写真をページ内に埋め込んで渡す。
+type PreviewData = { files: Record<string, string>; images: Record<string, string> };
+const preview = (globalThis as { __ACLISS_PREVIEW__?: PreviewData }).__ACLISS_PREVIEW__;
+
+async function readCsvFile(path: string) {
+  if (preview) {
+    const text = preview.files[path];
+    if (text === undefined) throw new Error(`${path} がプレビューに含まれていません。`);
+    return { text, lastModified: null };
+  }
   const res = await fetch(path, { cache: "no-cache" });
   if (!res.ok) {
     throw new Error(
       `${path} を読み込めませんでした（${res.status}）。院内サーバーの master フォルダにファイルがあるか確認してください。`,
     );
   }
-  const text = decodeCsv(await res.arrayBuffer());
+  return {
+    text: decodeCsv(await res.arrayBuffer()),
+    lastModified: res.headers.get("last-modified"),
+  };
+}
+
+async function fetchCsv<T>(path: string, requiredColumns: string[]) {
+  const { text, lastModified } = await readCsvFile(path);
   const parsed = Papa.parse<T>(text, {
     header: true,
     skipEmptyLines: true,
@@ -70,11 +87,13 @@ async function fetchCsv<T>(path: string, requiredColumns: string[]) {
       `${path} の1行目（列名）に ${missing.join("、")} がありません。管理画面からダウンロードしたCSVと同じ列名にしてください。`,
     );
   }
-  return { rows: parsed.data, lastModified: res.headers.get("last-modified") };
+  return { rows: parsed.data, lastModified };
 }
 
 function imagePath(imageSourceCode: string | null) {
-  return imageSourceCode ? `images/${encodeURIComponent(imageSourceCode)}.png` : null;
+  if (!imageSourceCode) return null;
+  if (preview) return preview.images[imageSourceCode] ?? null;
+  return `images/${encodeURIComponent(imageSourceCode)}.png`;
 }
 
 async function loadMaster(): Promise<MasterData> {
