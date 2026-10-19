@@ -182,13 +182,20 @@ export function BarcodeScanner() {
         if (!started && !cancelled) return startZxing();
       })
       .catch((e) => {
-        if (!cancelled) {
+        if (cancelled) return;
+        // ブラウザはHTTPSで開いたページにしかカメラを使わせない（院内サーバーをhttp://で
+        // 開いた場合など）。その場合は分かりにくい英語のエラーではなく理由を伝える。
+        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
           setCameraError(
-            e instanceof Error
-              ? e.message
-              : "カメラを起動できませんでした。カメラの利用を許可してください。",
+            "この接続ではカメラを使えません。カメラはHTTPS（https://）で開いたときだけ使えます。",
           );
+          return;
         }
+        setCameraError(
+          e instanceof Error
+            ? e.message
+            : "カメラを起動できませんでした。カメラの利用を許可してください。",
+        );
       });
 
     return () => {

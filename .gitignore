@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 院内サーバー版のビルド出力（npm run build:intranet で再生成できる）
+/intranet-dist

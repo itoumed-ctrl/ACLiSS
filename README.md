@@ -103,6 +103,10 @@ ACLiSS/
 ├── public/
 │   ├── sw.js               Service Worker本体
 │   └── icons/               PWAアイコン（現在は仮デザイン）
+├── intranet/               院内サーバー版（外部サービスを使わず、CSV・PNGで動く静的版）
+│   ├── README.md           院内サーバーへの置き方・マスタの更新方法
+│   ├── build.mjs           npm run build:intranet で intranet-dist/ を作る
+│   └── src/                本体の画面部品を院内版で動かすための差し替え部品
 ├── scripts/
 │   └── generate-qr.mjs     QRコード・院内掲示用ポスター生成スクリプト
 ├── supabase/
@@ -115,6 +119,12 @@ ACLiSS/
 ├── vercel.json           Vercel Cronの設定（Supabaseの自動一時停止を防ぐため1日1回起動）
 └── package.json
 ```
+
+## 院内サーバー版
+
+インターネット上のサービスを使わず、院内のWebサーバーにファイルを置くだけで動く版も
+作れます。マスタは院内サーバー上のCSV（`master/`）と容器写真のPNG（`images/`）で管理します。
+作り方・置き方・更新方法は [`intranet/README.md`](intranet/README.md) を参照してください。
 
 ## 開発サーバーの起動方法
 

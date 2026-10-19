@@ -61,7 +61,7 @@ export default function ContainersListPage() {
         ))}
       </ul>
 
-      {!loading && filtered.length === 0 && (
+      {!loading && containers.length > 0 && filtered.length === 0 && (
         <p className="py-6 text-center text-foreground/60">該当する容器が見つかりません</p>
       )}
     </div>

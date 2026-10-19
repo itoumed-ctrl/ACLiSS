@@ -1,5 +1,6 @@
 import type { Container } from "@/lib/types";
 import { containerLabel } from "@/lib/containerLabel";
+import { ContainerPhoto } from "./ContainerPhoto";
 
 export function ContainerDetail({ container }: { container: Container }) {
   return (
@@ -12,13 +13,10 @@ export function ContainerDetail({ container }: { container: Container }) {
       </div>
 
       {container.image_url && (
-        // 容器写真。院内共有フォルダの画像パスはそのまま使えないため、
-        // Supabaseストレージに移行済みの image_url のみ表示する。
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <ContainerPhoto
+          key={container.image_url}
           src={container.image_url}
-          alt={`容器コード${container.container_code}の写真`}
-          className="max-h-80 w-full rounded-lg border border-navy/20 object-contain bg-white"
+          containerCode={container.container_code}
         />
       )}
 
