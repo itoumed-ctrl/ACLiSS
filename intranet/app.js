@@ -772,8 +772,18 @@
       el: h(
         "section",
         { class: "card scan" },
-        h("h1", { class: "scan-title" }, "バーコードから検索"),
-        h("p", { class: "scan-sub" }, "ラベルのバーコードをカメラで読み取ってください"),
+        h(
+          "div",
+          { class: "scan-head" },
+          h("span", { class: "menu-icon picture" }, h("img", { src: asset("icons/menu-scan.png"), alt: "" })),
+          h(
+            "div",
+            {},
+            h("h1", { class: "scan-title" }, "バーコードから検索"),
+            // 狭い画面でも言葉の途中で改行しないよう、文節ごとに区切る
+            h("p", { class: "scan-sub" }, h("span", {}, "ラベルのバーコードを"), h("span", {}, "カメラで読み取ってください")),
+          ),
+        ),
         camera,
         cameraError,
         scanned,
