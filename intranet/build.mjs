@@ -55,6 +55,7 @@ async function buildPreview() {
   const files = {
     "master/containers.csv": await readFile(path.join(sampleDir, "containers.csv"), "utf8"),
     "master/test_items.csv": await readFile(path.join(sampleDir, "test_items.csv"), "utf8"),
+    "master/phonebook.csv": await readFile(path.join(sampleDir, "phonebook.csv"), "utf8"),
   };
   const images = Object.fromEntries(
     Object.entries(SAMPLE_PHOTOS).map(([code, photo]) => [

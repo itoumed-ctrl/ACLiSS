@@ -234,6 +234,33 @@ a.row:active {
   text-align: center;
 }
 
+/* 電話帳：分類の見出しと、番号の電話ボタン */
+.list .group {
+  padding: 0.375rem 1rem;
+  background: var(--bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+}
+.call-sm {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 40px;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--field);
+  border-radius: 999px;
+  color: var(--navy);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.call-sm:active {
+  background: var(--navy-tint);
+}
+
 /* 検索欄。スクロールしても上に残る */
 .search {
   position: sticky;

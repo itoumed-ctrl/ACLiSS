@@ -2,6 +2,7 @@
 
   containers.csv   … ACLiSSマスタ.xlsx の「材料」シートをCSVで保存したもの
   test_items.csv   … ACLiSSマスタ.xlsx の「オーダ可能項目」シートをCSVで保存したもの
+  phonebook.csv    … 電話帳（置かなくても可）。列は 分類・名称・読み・内線番号・備考
 
 ・Excelで各シートを開き、「名前を付けて保存」で「CSV UTF-8」または「CSV（コンマ区切り）」を
   選んで保存します（ExcelのCSV保存は、開いているシート1枚だけが保存されます）。

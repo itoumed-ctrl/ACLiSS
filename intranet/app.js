@@ -166,14 +166,26 @@
     return { code: itemCode, name: text(row["名称"]) || "", container: code(row["材料コード"]) };
   }
 
+  // 電話帳（master/phonebook.csv）の1行。名称と内線番号のどちらかが空の行は使わない
+  function toPhone(row) {
+    const name = text(row["名称"]);
+    const number = text(row["内線番号"]);
+    if (!name || !number) return null;
+    return { group: text(row["分類"]) || "その他", name, kana: text(row["読み"]), number, note: text(row["備考"]) };
+  }
+
   async function loadMaster() {
-    const [c, t] = await Promise.all([
+    const [c, t, p] = await Promise.all([
       readCsv("master/containers.csv", ["材料コード"]),
       readCsv("master/test_items.csv", ["項目コード", "名称", "材料コード"]),
+      // 電話帳は置かなくても使えるよう、読めなくても容器・検査項目の表示は止めない
+      readCsv("master/phonebook.csv", ["名称", "内線番号"]).catch((e) => ({ error: e.message })),
     ]);
     // 「最終更新」には、読み込んだ時刻ではなくCSVファイル自体の更新日時を出す
-    const times = [c.lastModified, t.lastModified].filter((v) => v && !Number.isNaN(v));
+    const times = [c.lastModified, t.lastModified, p.lastModified].filter((v) => v && !Number.isNaN(v));
     return {
+      phonebook: p.records ? p.records.map(toPhone).filter(Boolean) : null,
+      phonebookError: p.error || null,
       containers: c.records
         .map(toContainer)
         .filter(Boolean)
@@ -323,12 +335,15 @@
         input.value = query || "";
         function update() {
           const q = normalize(input.value.trim());
-          const { rows, count } = search(q);
+          // マスタをまだ読めていない間は探さない（下で「読み込み中」を出す）
+          const { rows, count, message } = master.data ? search(q) : { rows: [] };
           root.querySelector("[data-meta]").innerHTML = show(updatedAt(count));
           root.querySelector("[data-body]").innerHTML = show(
             !master.data
               ? waiting()
-              : rows.length > 0
+              : message
+                ? html`<p class="state">${message}</p>`
+                : rows.length > 0
                 ? html`<ul class="card list">${rows}</ul>`
                 : html`<p class="state">${q ? empty : hint}</p>`,
           );
@@ -352,7 +367,12 @@
         "menu-containers.png",
         "容器一覧から選ぶ",
         "容器コードや種類から探します",
-      )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav></div>`,
+      )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}${menuItem(
+        "#/phonebook",
+        "menu-phonebook.png",
+        "電話帳",
+        "部署名から内線番号を探します",
+      )}</nav></div>`,
       mount: scanner.mount,
     };
   }
@@ -421,6 +441,49 @@
               sub: `容器 ${t.container}` + (c ? `・${containerName(c)}` : ""),
             });
           }),
+        };
+      },
+    });
+
+  // ================================================================ 電話帳
+
+  // 番号をタップすると電話の画面が開き、番号が入った状態になる（発信は本人が押す）
+  function phoneButton(p) {
+    const number = p.number.replace(/[^\d+*#]/g, "");
+    if (!number) return html`<span class="row-sub">${p.number}</span>`;
+    return html`<a class="call-sm" href="tel:${number}" aria-label="${p.name}（${p.number}）に電話をかける">${icon(
+      "phone",
+    )}<span>${p.number}</span></a>`;
+  }
+
+  const phonebookPage = () =>
+    listPage({
+      title: "電話帳",
+      placeholder: "部署名・読み・番号で検索",
+      empty: "該当する連絡先が見つかりません",
+      search(q) {
+        const book = master.data.phonebook;
+        if (!book) {
+          return {
+            message: "電話帳がまだありません。院内サーバーの master フォルダに phonebook.csv を置くと、ここに出ます。",
+          };
+        }
+        const found = q ? book.filter((p) => searchKey(p, p.name, p.kana, p.number, p.group, p.note).includes(q)) : book;
+        // 分類ごとに見出しを付けて並べる（並びはCSVに書いた順）
+        const groups = [...new Set(found.map((p) => p.group))];
+        return {
+          count: found.length,
+          rows: groups.map((g) => [
+            html`<li class="group">${g}</li>`,
+            found
+              .filter((p) => p.group === g)
+              .map(
+                (p) =>
+                  html`<li><div class="row"><span class="row-text"><span class="row-title">${p.name}</span>${
+                    p.note && html`<span class="row-sub">${p.note}</span>`
+                  }</span>${phoneButton(p)}</div></li>`,
+              ),
+          ]),
         };
       },
     });
@@ -721,10 +784,10 @@
     const link = e.target.closest("[data-via]");
     if (link) via = link.dataset.via;
     // プレビュー（Claudeの画面の中）では電話の画面に移れず、プレビューが開けなくなるので発信しない
-    const call = preview && e.target.closest(".call");
+    const call = preview && e.target.closest(".call, .call-sm");
     if (call) {
       e.preventDefault();
-      call.lastElementChild.textContent = "プレビューでは発信できません";
+      call.lastElementChild.textContent = call.classList.contains("call") ? "プレビューでは発信できません" : "プレビュー不可";
     }
   });
 
@@ -743,6 +806,7 @@
     if (path === "/" || path === "/scan") return homePage();
     if (path === "/containers") return containersPage();
     if (path === "/search") return searchPage(query);
+    if (path === "/phonebook") return phonebookPage();
     const m = path.match(/^\/containers\/([^/]+)$/);
     if (m) return containerPage(decodeURIComponent(m[1]));
     return { html: html`<div class="page">${toolbar()}<p class="state">ページが見つかりません。</p></div>` };
