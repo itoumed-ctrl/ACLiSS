@@ -2,7 +2,7 @@
 // 「そのまま院内サーバーへコピーすればよいフォルダ」を作る。
 // アプリ本体（index.html・app.js・app.css）は手書きのファイルをそのまま並べるだけで、変換はしない。
 // 外部のサーバー（Vercel・Supabase・CDN・Googleフォント）には一切つながらない。
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,6 +30,11 @@ await cp(path.join(here, "manifest.webmanifest"), path.join(out, "manifest.webma
 for (const icon of ["icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
   await cp(path.join(root, "public/icons", icon), path.join(out, "icons", icon));
 }
+// 画面で使う画像（メニューのアイコンなど）
+const appIcons = (await readdir(path.join(here, "icons"))).filter((f) => f.endsWith(".png"));
+for (const icon of appIcons) {
+  await cp(path.join(here, "icons", icon), path.join(out, "icons", icon));
+}
 await cp(zxingFile, path.join(out, "vendor/zxing-browser.min.js"));
 
 // マスタCSVと写真は院内で別管理するため、置き場所と説明だけを用意しておく。
@@ -55,7 +60,12 @@ async function buildPreview() {
     ]),
   );
   const inlineScript = (code) => `<script>${code.replace(/<\/(script)/gi, "<\\/$1")}</script>`;
-  const previewData = JSON.stringify({ files, images }).replace(/</g, "\\u003c");
+  const assets = {};
+  for (const icon of appIcons) {
+    const png = await readFile(path.join(here, "icons", icon));
+    assets[`icons/${icon}`] = `data:image/png;base64,${png.toString("base64")}`;
+  }
+  const previewData = JSON.stringify({ files, images, assets }).replace(/</g, "\\u003c");
   const scripts = [
     `window.__ACLISS_PREVIEW__ = ${previewData};`,
     await readFile(zxingFile, "utf8"),

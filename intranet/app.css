@@ -400,6 +400,11 @@ a.row:active {
   background: var(--navy-tint);
   color: var(--navy);
 }
+.menu-icon img {
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+}
 .row-main {
   flex: 1;
   min-width: 0;

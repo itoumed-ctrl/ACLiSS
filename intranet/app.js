@@ -168,6 +168,11 @@
     };
   }
 
+  // アプリに同梱した画像。プレビューではページ内に埋め込んだものを使う
+  function asset(path) {
+    return (preview && preview.assets[path]) || `${path}?v=__BUILD_ID__`;
+  }
+
   // 容器写真は images/<画像の容器コード>.png
   function imagePath(imageCode) {
     if (!imageCode) return null;
@@ -350,7 +355,7 @@
         h(
           "div",
           { class: "card menu" },
-          menuItem("#/containers", "list", "容器一覧から選ぶ", "容器コードや種類から探します"),
+          menuItem("#/containers", "menu-containers.png", "容器一覧から選ぶ", "容器コードや種類から探します"),
           menuItem("#/search", "flask", "検査項目から探す", "検査項目名で検索します"),
         ),
       ),
@@ -358,11 +363,13 @@
     };
   }
 
+  // アイコンは線のアイコン名か、icons/ に置いたPNGのファイル名
   function menuItem(href, iconName, title, description) {
+    const picture = iconName.endsWith(".png") ? h("img", { src: asset(`icons/${iconName}`), alt: "" }) : icon(iconName);
     return h(
       "a",
       { href },
-      h("span", { class: "menu-icon" }, icon(iconName)),
+      h("span", { class: "menu-icon" }, picture),
       h("span", { class: "row-main" }, h("span", { class: "row-title" }, title), h("p", { class: "row-sub" }, description)),
       h("span", { class: "chevron" }, icon("chevron")),
     );
