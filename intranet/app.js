@@ -747,7 +747,7 @@
         camera,
         cameraError,
         scanned,
-        h("p", { class: "hint" }, "カメラがうまく読み取れない場合は、ラベルの11桁の数字を直接入力できます。"),
+        h("p", { class: "hint" }, "カメラがうまく読み取れない場合は、ラベルの11桁の数字を直接入力してください。"),
         h("form", { class: "manual", onsubmit: onManualSubmit }, input, h("button", { type: "submit" }, "検索")),
         formError,
       ),
