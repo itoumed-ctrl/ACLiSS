@@ -41,6 +41,7 @@
     cameraOff: '<path d="M3 3l18 18"/><path d="M9.5 5H15l1.5 2H19a2 2 0 012 2v8.5M17 19H5a2 2 0 01-2-2V9a2 2 0 012-2h1"/><path d="M9.9 10.1a3 3 0 004 4"/>',
     tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/>',
   };
 
   function icon(name) {
@@ -454,7 +455,13 @@
   }
 
   function detail(c) {
-    const ext = (phs) => phs && h("span", { class: "fact-sub" }, `内線 ${phs}`);
+    // 内線番号はタップすると電話の画面が開き、番号が入った状態になる（発信は本人が押す）
+    const ext = (phs) => {
+      if (!phs) return null;
+      const number = phs.replace(/[^\d+*#]/g, "");
+      if (!number) return h("span", { class: "fact-sub" }, `内線 ${phs}`);
+      return h("a", { class: "call", href: `tel:${number}` }, icon("phone"), `内線 ${phs}`, h("span", {}, "電話をかける"));
+    };
     return [
       h(
         "header",

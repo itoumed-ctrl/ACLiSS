@@ -513,6 +513,29 @@ a.row:active {
   font-weight: 400;
   color: var(--ink-2);
 }
+/* 内線番号のボタン。押せることが分かるよう、紺の枠で囲む */
+.call {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--field);
+  border-radius: 10px;
+  color: var(--navy);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.call:active {
+  background: var(--navy-tint);
+}
+.call span:last-child {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
 .note {
   padding: 0.875rem 1rem;
   border: 1px solid var(--line);
