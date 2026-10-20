@@ -766,7 +766,7 @@
         "section",
         { class: "card scan" },
         h("h1", { class: "scan-title" }, "バーコードから検索"),
-        h("p", { class: "scan-sub" }, "ラベルのバーコードをカメラに映してください"),
+        h("p", { class: "scan-sub" }, "ラベルのバーコードをカメラで読み取ってください"),
         camera,
         cameraError,
         scanned,
