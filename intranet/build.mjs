@@ -26,11 +26,8 @@ await mkdir(path.join(out, "vendor"), { recursive: true });
 for (const file of ["index.html", "app.js", "app.css"]) {
   await writeFile(path.join(out, file), await readApp(file));
 }
-await cp(path.join(here, "manifest.webmanifest"), path.join(out, "manifest.webmanifest"));
-for (const icon of ["icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
-  await cp(path.join(root, "public/icons", icon), path.join(out, "icons", icon));
-}
-// 画面で使う画像（メニューのアイコンなど）
+await writeFile(path.join(out, "manifest.webmanifest"), await readApp("manifest.webmanifest"));
+// 画面で使う画像（メニューのアイコン、ブラウザのタブ・ホーム画面のアイコン）。院内サーバー版だけの絵で、Vercel版の public/icons とは別
 const appIcons = (await readdir(path.join(here, "icons"))).filter((f) => f.endsWith(".png"));
 for (const icon of appIcons) {
   await cp(path.join(here, "icons", icon), path.join(out, "icons", icon));
@@ -67,7 +64,8 @@ async function buildPreview() {
   );
   const inlineScript = (code) => `<script>${code.replace(/<\/(script)/gi, "<\\/$1")}</script>`;
   const assets = {};
-  for (const icon of appIcons) {
+  // プレビューで使うのは画面の中のアイコンだけ（タブ・ホーム画面のアイコンは埋め込まない）
+  for (const icon of appIcons.filter((f) => f.startsWith("menu-"))) {
     const png = await readFile(path.join(here, "icons", icon));
     assets[`icons/${icon}`] = `data:image/png;base64,${png.toString("base64")}`;
   }

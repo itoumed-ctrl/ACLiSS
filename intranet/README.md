@@ -27,7 +27,7 @@ acliss/                  ← フォルダ名・置き場所は自由
 ├── app.js
 ├── app.css
 ├── manifest.webmanifest
-├── icons/
+├── icons/               ← ブラウザのタブ・ホーム画面のアイコン（院内サーバー版専用の絵）、トップのメニューのアイコン
 ├── vendor/              ← バーコード読み取り部品（iPhoneなどで使用）
 ├── log.gif              ← 利用の記録用の空の画像（下の「利用の記録」）
 ├── master/              ← マスタCSV（院内で管理）
