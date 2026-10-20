@@ -306,16 +306,14 @@
   // ---------------------------------------------------------------- トップ
 
   function homePage() {
-    const scanner = barcodeScanner();
     return {
       el: h(
         "div",
         { class: "page home" },
-        scanner.el,
+        homeButton("#/scan", "バーコードから検索", "ラベルのバーコードをカメラで読み取ります"),
         homeButton("#/containers", "容器一覧から選ぶ", "容器コードや種類から探します"),
         homeButton("#/search", "検査項目から探す", "検査項目名で検索します"),
       ),
-      destroy: scanner.destroy,
     };
   }
 
@@ -331,7 +329,7 @@
   function scanPage() {
     const scanner = barcodeScanner();
     return {
-      el: h("div", { class: "page" }, backNav(), h("h1", { class: "title mb-4" }, "バーコードをスキャン"), scanner.el),
+      el: h("div", { class: "page" }, backNav(), h("h1", { class: "title mb-4" }, "バーコードから検索"), scanner.el),
       destroy: scanner.destroy,
     };
   }
@@ -770,7 +768,7 @@
     if (path === currentPath) return;
     currentPath = path;
 
-    // 画面ごとに作り直す（トップを離れたらカメラも止まる）
+    // 画面ごとに作り直す（スキャン画面を離れたらカメラも止まる）
     if (current.destroy) current.destroy();
     current = pageFor(path || "/", query);
     main.replaceChildren(current.el);
