@@ -415,13 +415,16 @@
     html`<div class="fact"><dt class="label">${label}</dt><dd${size && html` class="${size}"`}>${value}${sub}</dd></div>`;
 
   function detail(c) {
-    return html`<header class="detail-head"><p class="label">容器コード</p><h1 class="detail-code">${c.code}</h1>${
+    // 採取量は容器コードの右に並べ、番号と一緒に目に入るようにする
+    return html`<header class="detail-head"><div class="detail-top"><div><p class="label">容器コード</p><h1 class="detail-code">${
+      c.code
+    }</h1></div><div class="amount"><p class="label">採取量</p><p class="amount-value">${c.amount || "規定なし"}</p></div></div>${
       (c.vessel || c.material) &&
       html`<p class="detail-name">${c.vessel || c.material}${c.vessel && c.material && html`<span>${c.material}</span>`}</p>`
     }</header>${
       // 写真ファイルが無い・読めない時は、壊れた画像を出さずに枠ごと消す（下の error の処理）
       c.photo && html`<figure class="card photo"><img src="${c.photo}" alt="容器コード${c.code}の写真"></figure>`
-    }<dl class="card facts">${fact("採取量", c.amount || "規定なし", null, "big")}${fact(
+    }<dl class="card facts">${fact(
       "払い出し場所",
       c.dispense || "未設定",
       extension(c.dispensePhs),
