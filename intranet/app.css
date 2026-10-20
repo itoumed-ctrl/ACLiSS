@@ -480,13 +480,16 @@ a.row:active {
   gap: 1rem;
 }
 .amount {
-  padding: 0.5rem 0.875rem;
-  border-radius: 10px;
+  padding: 0.625rem 1rem;
+  border-radius: 12px;
   background: var(--navy-tint);
   text-align: right;
 }
+.amount .label {
+  font-size: 0.8125rem;
+}
 .amount-value {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 800;
   line-height: 1.2;
   color: var(--navy);
