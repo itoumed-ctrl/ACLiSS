@@ -439,7 +439,7 @@
     if (!phs) return null;
     const number = phs.replace(/[^\d+*#]/g, "");
     if (!number) return html`<span class="fact-sub">内線 ${phs}</span>`;
-    return html`<a class="call" href="tel:${number}" aria-label="内線${phs}に電話をかける">${icon("phone")}内線 ${phs}</a>`;
+    return html`<a class="call" href="tel:${number}">${icon("phone")}内線 ${phs}<span>電話をかける</span></a>`;
   }
 
   const fact = (label, value, sub, size) =>
@@ -461,10 +461,12 @@
     }">${amount(c.amount)}</p></div></header>${
       // 写真ファイルが無い・読めない時は、壊れた画像を出さずに枠ごと消す（下の error の処理）
       c.photo && html`<figure class="card photo"><img src="${c.photo}" alt="容器コード${c.code}の写真"></figure>`
-    }<dl class="card facts">${
-      // 払い出し場所と検査問い合わせ先は左右に並べる（片方が空欄でも並びを崩さない）
-      fact("払い出し場所", c.dispense || "未設定", extension(c.dispensePhs))
-    }${fact("検査問い合わせ先", c.inquiry || "未設定", extension(c.inquiryPhs))}</dl>${
+    }<dl class="card facts">${fact(
+      "払い出し場所",
+      c.dispense || "未設定",
+      extension(c.dispensePhs),
+      "big",
+    )}${(c.inquiry || c.inquiryPhs) && fact("検査問い合わせ先", c.inquiry || "", extension(c.inquiryPhs))}</dl>${
       c.instructions.length > 0 &&
       html`<section class="note gold"><h2>${icon("tag")}指示ラベル</h2><ul>${c.instructions.map((s) => html`<li>${s}</li>`)}</ul></section>`
     }${c.notes && html`<section class="note"><h2>${icon("info")}注意事項</h2><p>${c.notes}</p></section>`}`;
@@ -704,7 +706,7 @@
     const call = preview && e.target.closest(".call");
     if (call) {
       e.preventDefault();
-      call.textContent = "プレビューでは発信不可";
+      call.lastElementChild.textContent = "プレビューでは発信できません";
     }
   });
 
