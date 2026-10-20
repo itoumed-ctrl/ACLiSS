@@ -127,6 +127,21 @@ button {
   font-size: 0.8125rem;
   color: rgb(255 255 255 / 0.75);
 }
+/* トップの表紙。ロゴの中の小さな文字（看護師向け…）が読める幅で出す */
+.is-home .appbar {
+  display: none;
+}
+.hero {
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem 1rem 1rem;
+  background: var(--surface);
+  border-bottom: 3px solid var(--gold);
+}
+.hero img {
+  width: min(80vw, 22rem);
+  height: auto;
+}
 .page {
   display: flex;
   flex-direction: column;

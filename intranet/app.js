@@ -350,17 +350,26 @@
     return {
       el: h(
         "div",
-        { class: "page" },
-        scanner.el,
+        {},
+        // トップだけは紺の帯の代わりに、ロゴを表紙として大きく出す
         h(
-          "div",
-          { class: "card menu" },
-          menuItem("#/containers", "menu-containers.png", "容器一覧から選ぶ", "容器コードや種類から探します"),
-          menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します"),
+          "header",
+          { class: "hero" },
+          h("h1", {}, h("img", { src: asset("icons/logo.png"), alt: "ACLiSS 看護師向け臨床検査情報提供システム" })),
         ),
+        h("div", { class: "page" }, scanner.el, menu()),
       ),
       destroy: scanner.destroy,
     };
+  }
+
+  function menu() {
+    return h(
+      "div",
+      { class: "card menu" },
+      menuItem("#/containers", "menu-containers.png", "容器一覧から選ぶ", "容器コードや種類から探します"),
+      menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します"),
+    );
   }
 
   // アイコンは線のアイコン名か、icons/ に置いたPNG（角丸の四角まで描いた正方形）のファイル名
@@ -779,7 +788,7 @@
           h(
             "div",
             {},
-            h("h1", { class: "scan-title" }, "バーコードから検索"),
+            h("h2", { class: "scan-title" }, "バーコードから検索"),
             // 狭い画面でも言葉の途中で改行しないよう、文節ごとに区切る
             h("p", { class: "scan-sub" }, h("span", {}, "検査ラベルのバーコードを"), h("span", {}, "カメラで読み取ってください")),
           ),
@@ -824,6 +833,7 @@
     // 画面ごとに作り直す（カメラのある画面を離れたらカメラも止まる）
     if (current.destroy) current.destroy();
     current = pageFor(path || "/", query);
+    document.body.classList.toggle("is-home", (path || "/") === "/");
     main.replaceChildren(current.el);
     loadMasterOnce();
     if (current.update) current.update();
