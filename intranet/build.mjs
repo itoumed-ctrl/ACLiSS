@@ -37,6 +37,12 @@ for (const icon of appIcons) {
 }
 await cp(zxingFile, path.join(out, "vendor/zxing-browser.min.js"));
 
+// 利用の記録用の空の画像（1×1の透明なGIF）。アプリがこれを取りに行くと、Webサーバーのアクセスログに記録が残る
+await writeFile(
+  path.join(out, "log.gif"),
+  Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"),
+);
+
 // マスタCSVと写真は院内で別管理するため、置き場所と説明だけを用意しておく。
 await mkdir(path.join(out, "master"), { recursive: true });
 await mkdir(path.join(out, "images"), { recursive: true });

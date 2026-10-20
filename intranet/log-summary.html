@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ACLiSS ログ集計</title>
+    <style>
+      /* ACLiSS の利用記録（Webサーバーのアクセスログに残った log.gif の行）を集計する道具。
+         院内サーバーには置かず、ログを見る人のPCでダブルクリックして開く。ファイルは外へ送らない。 */
+      :root {
+        --navy: #203863;
+        --gold: #ffc000;
+        --ink: #161b26;
+        --ink-3: #7c8597;
+        --line: #e2e6ed;
+        --bg: #f4f6f9;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 15px/1.5 -apple-system, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+      }
+      header {
+        padding: 14px 24px;
+        background: var(--navy);
+        color: #fff;
+        font-size: 18px;
+        font-weight: 800;
+        border-bottom: 3px solid var(--gold);
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 20px 24px 48px;
+      }
+      .drop {
+        display: block;
+        padding: 28px;
+        border: 2px dashed #b9c2d3;
+        border-radius: 12px;
+        background: #fff;
+        text-align: center;
+        cursor: pointer;
+      }
+      .drop.over {
+        border-color: var(--navy);
+        background: #eef1f7;
+      }
+      .drop input {
+        display: none;
+      }
+      .hint {
+        margin: 8px 0 0;
+        color: var(--ink-3);
+        font-size: 13px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+      .stat {
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .stat p {
+        margin: 0;
+        color: var(--ink-3);
+        font-size: 13px;
+      }
+      .stat strong {
+        font-size: 24px;
+        color: var(--navy);
+      }
+      h2 {
+        margin: 28px 0 8px;
+        font-size: 16px;
+        color: var(--navy);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+      }
+      th {
+        background: #eef1f7;
+        font-size: 13px;
+      }
+      td.n,
+      th.n {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      button {
+        padding: 8px 16px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--navy);
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .empty {
+        color: var(--ink-3);
+      }
+    </style>
+  </head>
+  <body>
+    <header>ACLiSS ログ集計</header>
+    <main>
+      <label class="drop" id="drop">
+        <input type="file" id="files" multiple />
+        <strong>Webサーバーのログファイルをここにドロップ（またはクリックして選択）</strong>
+        <p class="hint">
+          IISのログ（例: C:\inetpub\logs\LogFiles\W3SVC1\u_ex261020.log）。複数まとめて選べます。<br />
+          一緒に master の containers.csv も選ぶと、容器コードの横に容器名を出します。ファイルはこのPCの中だけで読み、どこにも送りません。
+        </p>
+      </label>
+      <div id="result"></div>
+    </main>
+    <script>
+      (function () {
+        "use strict";
+
+        const EVENTS = { open: "アプリを開いた", view: "容器を開いた", notfound: "見つからない容器コード", camera: "カメラが使えなかった", "master-error": "マスタを読めなかった" };
+        const VIA = { scan: "バーコード", digits: "手入力", list: "一覧", search: "検査項目検索", direct: "その他（URL・戻る）" };
+        const REASON = { https: "HTTPSで開いていない", denied: "カメラの利用を許可していない", nodevice: "カメラが見つからない", other: "その他" };
+
+        const esc = (v) => String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+        function decode(buffer) {
+          try {
+            return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+          } catch {
+            return new TextDecoder("shift_jis").decode(buffer);
+          }
+        }
+
+        // IISのW3C形式のログ。「#Fields:」の行が列名で、データの行は空白区切り。
+        // 日時はIISの標準では世界標準時（UTC）なので、日本時間に直して扱う。
+        function parseLog(text) {
+          const events = [];
+          let fields = [];
+          for (const line of text.split(/\r?\n/)) {
+            if (line.startsWith("#Fields:")) {
+              fields = line.slice(8).trim().split(/\s+/);
+              continue;
+            }
+            if (!line || line.startsWith("#")) continue;
+            const cols = line.split(" ");
+            const row = Object.fromEntries(fields.map((f, i) => [f, cols[i]]));
+            if (!row["cs-uri-stem"] || !/\/log\.gif$/i.test(row["cs-uri-stem"])) continue;
+            const q = new URLSearchParams(row["cs-uri-query"] === "-" ? "" : row["cs-uri-query"]);
+            const at = new Date(`${row.date}T${row.time}Z`);
+            events.push({
+              at,
+              ip: row["c-ip"] || "",
+              event: q.get("e") || "",
+              code: q.get("code") || "",
+              via: q.get("via") || "",
+              reason: q.get("reason") || "",
+              agent: (row["cs(User-Agent)"] || "").replace(/\+/g, " "),
+            });
+          }
+          return events;
+        }
+
+        // CSVの1行を値の並びにする（"" で囲んだ値の中のカンマにも対応）
+        function splitCsv(line) {
+          const values = [];
+          let value = "";
+          let quoted = false;
+          for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (quoted && c === '"' && line[i + 1] === '"') {
+              value += c;
+              i++;
+            } else if (c === '"') {
+              quoted = !quoted;
+            } else if (c === "," && !quoted) {
+              values.push(value);
+              value = "";
+            } else {
+              value += c;
+            }
+          }
+          return [...values, value];
+        }
+
+        // containers.csv から 容器コード → 容器名 の対応を作る（1行目に「材料コード」がある時だけ）
+        function parseNames(text) {
+          const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
+          const cols = splitCsv(lines[0]).map((c) => c.trim());
+          const ci = cols.indexOf("材料コード"), vi = cols.indexOf("VESSEL"), mi = cols.indexOf("MATERIAL");
+          if (ci < 0) return null;
+          const names = {};
+          for (const line of lines.slice(1)) {
+            const r = splitCsv(line);
+            if (r[ci]) names[r[ci].trim().padStart(3, "0")] = [r[vi], r[mi]].filter((v) => v && v.trim()).join(" － ");
+          }
+          return names;
+        }
+
+        const day = (d) => d.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tokyo" });
+        const stamp = (d) => d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+        const count = (list, key) => list.reduce((m, x) => ((m[key(x)] = (m[key(x)] || 0) + 1), m), {});
+        const table = (head, rows) =>
+          rows.length === 0
+            ? `<p class="empty">記録はありません</p>`
+            : `<table><tr>${head.map((h) => `<th class="${h.n ? "n" : ""}">${esc(h.t)}</th>`).join("")}</tr>${rows
+                .map((r) => `<tr>${r.map((c, i) => `<td class="${head[i].n ? "n" : ""}">${esc(c)}</td>`).join("")}</tr>`)
+                .join("")}</table>`;
+
+        function render(events, names) {
+          const result = document.getElementById("result");
+          if (events.length === 0) {
+            result.innerHTML = `<p class="hint">ACLiSSの記録（log.gif の行）が見つかりませんでした。ACLiSSを置いたサイトのログファイルか確認してください。</p>`;
+            return;
+          }
+          events.sort((a, b) => a.at - b.at);
+          const by = (e) => events.filter((x) => x.event === e);
+          const views = by("view"), missing = by("notfound"), cams = by("camera"), opens = by("open");
+          const name = (code) => (names && names[code]) || "";
+
+          const days = Object.entries(count(events, (e) => day(e.at))).map(([d]) => [
+            d,
+            events.filter((e) => day(e.at) === d && e.event === "open").length,
+            events.filter((e) => day(e.at) === d && e.event === "view").length,
+          ]);
+          const perCode = Object.entries(count(views, (e) => e.code))
+            .sort((a, b) => b[1] - a[1])
+            .map(([code, n]) => {
+              const v = count(views.filter((e) => e.code === code), (e) => e.via);
+              return [code, name(code), n, v.scan || 0, v.digits || 0, v.list || 0, v.search || 0, v.direct || 0];
+            });
+          const viaTotal = Object.entries(count(views, (e) => e.via)).map(([k, n]) => [VIA[k] || k, n, `${Math.round((n / views.length) * 100)}%`]);
+          const missingRows = Object.entries(count(missing, (e) => e.code))
+            .sort((a, b) => b[1] - a[1])
+            .map(([code, n]) => [code, n, [...new Set(missing.filter((e) => e.code === code).map((e) => VIA[e.via] || e.via))].join("・")]);
+          const camRows = Object.entries(count(cams, (e) => e.reason)).map(([k, n]) => [REASON[k] || k, n]);
+
+          result.innerHTML = `
+            <div class="stats">
+              <div class="stat"><p>期間（日本時間）</p><strong style="font-size:15px">${esc(day(events[0].at))} 〜 ${esc(day(events.at(-1).at))}</strong></div>
+              <div class="stat"><p>アプリを開いた</p><strong>${opens.length}</strong></div>
+              <div class="stat"><p>容器を開いた</p><strong>${views.length}</strong></div>
+              <div class="stat"><p>見つからない容器コード</p><strong>${missing.length}</strong></div>
+              <div class="stat"><p>カメラが使えなかった</p><strong>${cams.length}</strong></div>
+            </div>
+            <p><button type="button" id="csv">記録をCSVで保存（Excel用）</button></p>
+            <h2>日別</h2>${table([{ t: "日付" }, { t: "アプリを開いた", n: 1 }, { t: "容器を開いた", n: 1 }], days)}
+            <h2>容器を開いた方法</h2>${table([{ t: "方法" }, { t: "回数", n: 1 }, { t: "割合", n: 1 }], viaTotal)}
+            <h2>容器別（多い順）</h2>${table(
+              [{ t: "容器コード" }, { t: "容器名" }, { t: "合計", n: 1 }, { t: "バーコード", n: 1 }, { t: "手入力", n: 1 }, { t: "一覧", n: 1 }, { t: "検査項目検索", n: 1 }, { t: "その他", n: 1 }],
+              perCode,
+            )}
+            <h2>見つからなかった容器コード（マスタの登録漏れの確認に）</h2>${table([{ t: "容器コード" }, { t: "回数", n: 1 }, { t: "開いた方法" }], missingRows)}
+            <h2>カメラが使えなかった理由</h2>${table([{ t: "理由" }, { t: "回数", n: 1 }], camRows)}`;
+
+          document.getElementById("csv").addEventListener("click", () => {
+            const head = ["日時（日本時間）", "端末のIPアドレス", "操作", "容器コード", "容器名", "開いた方法", "カメラの理由", "ブラウザ"];
+            const lines = events.map((e) =>
+              [stamp(e.at), e.ip, EVENTS[e.event] || e.event, e.code, name(e.code), VIA[e.via] || e.via, REASON[e.reason] || e.reason, e.agent]
+                .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+                .join(","),
+            );
+            const blob = new Blob(["\uFEFF" + [head.join(","), ...lines].join("\r\n")], { type: "text/csv" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `acliss-log-${day(events[0].at).replace(/\//g, "")}-${day(events.at(-1).at).replace(/\//g, "")}.csv`;
+            a.click();
+          });
+        }
+
+        async function load(fileList) {
+          let events = [];
+          let names = null;
+          for (const file of fileList) {
+            const text = decode(await file.arrayBuffer());
+            if (/\.csv$/i.test(file.name)) names = parseNames(text) || names;
+            else events = events.concat(parseLog(text));
+          }
+          render(events, names);
+        }
+
+        const drop = document.getElementById("drop");
+        document.getElementById("files").addEventListener("change", (e) => load(e.target.files));
+        drop.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          drop.classList.add("over");
+        });
+        drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+        drop.addEventListener("drop", (e) => {
+          e.preventDefault();
+          drop.classList.remove("over");
+          load(e.dataTransfer.files);
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -218,12 +218,33 @@
       })
       .catch((e) => {
         master.error = e instanceof Error ? e.message : "マスタを読み込めませんでした";
+        log("master-error");
       })
       .finally(() => {
         master.loading = false;
         if (current.update) current.update();
       });
   }
+
+  // ================================================================ 利用の記録（ログ）
+
+  // 操作のたびに、空の画像 log.gif を「log.gif?e=view&code=121&via=scan」のように取りに行く。
+  // サーバーは何もせずファイルを渡すだけだが、? 以降がWebサーバーのアクセスログに残り、それが利用の記録になる。
+  // 患者さんの情報や検索した言葉は送らない。記録できなくてもアプリの動きは変わらない。
+  //   e=open      アプリを開いた
+  //   e=view      容器の画面を開いた（code=容器コード、via=scan・digits・list・search・direct）
+  //   e=notfound  マスタにない容器コードを開いた（code・via は view と同じ）
+  //   e=camera    カメラが使えなかった（reason=https・denied・nodevice・other）
+  function log(event, details) {
+    if (preview) return; // 開発確認用のプレビューでは記録しない
+    const params = new URLSearchParams({ e: event, ...details, t: Date.now() });
+    new Image().src = `log.gif?${params}`;
+  }
+
+  // どこから容器の画面を開いたか。容器の画面を開いた時に記録して direct（URL・戻る）に戻す
+  let via = "direct";
+  // カメラが使えなかった記録は、トップを開くたびではなく1回だけ残す
+  let cameraLogged = false;
 
   // ================================================================ 文字
 
@@ -271,12 +292,12 @@
   }
 
   // 一覧の1行。href がなければ押せない（灰色の）行
-  function row({ href, lead, title, sub }) {
+  function row({ href, lead, title, sub, from }) {
     const inner = html`${lead}<span class="row-text"><span class="row-title">${title}</span>${
       sub && html`<span class="row-sub">${sub}</span>`
     }</span>`;
     return href
-      ? html`<li><a href="${href}" class="row">${inner}${icon("chevron")}</a></li>`
+      ? html`<li><a href="${href}" class="row" data-via="${from}">${inner}${icon("chevron")}</a></li>`
       : html`<li><div class="row off">${inner}</div></li>`;
   }
 
@@ -345,6 +366,7 @@
           rows: found.map((c) =>
             row({
               href: `#/containers/${c.code}`,
+              from: "list",
               lead: html`<span class="code">${c.code}</span>`,
               title: c.vessel || c.material || "",
               sub: c.vessel && c.material,
@@ -376,6 +398,7 @@
             const c = byCode.get(t.container);
             return row({
               href: `#/containers/${t.container}`,
+              from: "search",
               title: t.name,
               sub: `容器 ${t.container}` + (c ? `・${containerName(c)}` : ""),
             });
@@ -391,12 +414,20 @@
       html: html`<div class="page"></div>`,
       mount(root) {
         const page = root.firstElementChild;
+        const from = via;
+        via = "direct";
+        let logged = false;
         function update() {
           const c = containers().find((x) => x.code === containerCode);
           page.innerHTML = show([
             toolbar(),
             c ? detail(c) : waiting() || html`<p class="alert">容器コード「${containerCode}」は見つかりませんでした。</p>`,
           ]);
+          // 見つかった時はすぐ、見つからない時は最新のマスタを読み終えてから1回だけ記録する
+          if (!logged && (c || (!master.loading && master.data))) {
+            logged = true;
+            log(c ? "view" : "notfound", { code: containerCode, via: from });
+          }
         }
         return { update };
       },
@@ -516,6 +547,7 @@
       stops.splice(0).forEach((fn) => fn());
       view.classList.replace("scanning", "success");
       status.textContent = "読み取り完了";
+      via = "scan";
       setTimeout(() => (location.hash = `/containers/${found}`), 400);
     }
 
@@ -634,7 +666,10 @@
       const found = codeFromDigits($("#label-digits").value);
       const error = $(".field-error");
       error.hidden = Boolean(found);
-      if (found) location.hash = `/containers/${found}`;
+      if (found) {
+        via = "digits";
+        location.hash = `/containers/${found}`;
+      }
       else error.textContent = "11桁の数字で入力してください（検査ラベルに印字されている数字をそのまま）";
     });
 
@@ -644,12 +679,15 @@
         if (stopped) return;
         view.hidden = true;
         // カメラはHTTPS（https://）で開いたページでしか使えない。その時は英語のエラーではなく理由を出す
-        const reason =
-          !window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia
-            ? "この接続ではカメラを使えません。カメラはHTTPS（https://）で開いたときだけ使えます。"
-            : e instanceof Error
-              ? e.message
-              : "カメラを起動できませんでした。カメラの利用を許可してください。";
+        const insecure = !window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia;
+        const kind = insecure ? "https" : { NotAllowedError: "denied", NotFoundError: "nodevice" }[e && e.name] || "other";
+        if (!cameraLogged) log("camera", { reason: kind });
+        cameraLogged = true;
+        const reason = insecure
+          ? "この接続ではカメラを使えません。カメラはHTTPS（https://）で開いたときだけ使えます。"
+          : e instanceof Error
+            ? e.message
+            : "カメラを起動できませんでした。カメラの利用を許可してください。";
         const off = $(".camera-off");
         off.innerHTML = show(html`${icon("cameraOff")}<div><strong>カメラを利用できません</strong>${reason}</div>`);
         off.hidden = false;
@@ -662,6 +700,8 @@
 
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-back]")) history.back();
+    const link = e.target.closest("[data-via]");
+    if (link) via = link.dataset.via;
     // プレビュー（Claudeの画面の中）では電話の画面に移れず、プレビューが開けなくなるので発信しない
     const call = preview && e.target.closest(".call");
     if (call) {
@@ -712,5 +752,6 @@
   }
 
   window.addEventListener("hashchange", render);
+  log("open");
   render();
 })();
