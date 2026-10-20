@@ -356,7 +356,7 @@
           "div",
           { class: "card menu" },
           menuItem("#/containers", "menu-containers.png", "容器一覧から選ぶ", "容器コードや種類から探します"),
-          menuItem("#/search", "flask", "検査項目から探す", "検査項目名で検索します"),
+          menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します"),
         ),
       ),
       destroy: scanner.destroy,

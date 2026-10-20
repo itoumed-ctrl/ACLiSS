@@ -394,15 +394,16 @@ a.row:active {
 .menu-icon {
   display: grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  flex-shrink: 0;
+  width: 4rem;
+  height: 3rem;
   border-radius: var(--radius-sm);
   background: var(--navy-tint);
   color: var(--navy);
 }
 .menu-icon img {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 3.5rem;
+  height: 2.25rem;
   object-fit: contain;
 }
 .row-main {
