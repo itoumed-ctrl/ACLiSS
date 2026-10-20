@@ -311,7 +311,6 @@
       el: h(
         "div",
         { class: "page home" },
-        h("h1", { class: "title" }, "容器を調べる"),
         scanner.el,
         homeButton("#/containers", "容器一覧から選ぶ", "容器コードや種類から探します"),
         homeButton("#/search", "検査項目から探す", "検査項目名で検索します"),
