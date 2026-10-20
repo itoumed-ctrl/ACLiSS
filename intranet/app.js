@@ -166,12 +166,13 @@
     return { code: itemCode, name: text(row["名称"]) || "", container: code(row["材料コード"]) };
   }
 
-  // 電話帳（master/phonebook.csv）の1行。名称と内線番号のどちらかが空の行は使わない
+  // 電話帳（master/phonebook.csv）の1行。大分類 ▶ 小分類 ▶ 内線番号 の順に並べる。
+  // 小分類と内線番号のどちらかが空の行は使わない
   function toPhone(row) {
-    const name = text(row["名称"]);
+    const name = text(row["小分類"]);
     const number = text(row["内線番号"]);
     if (!name || !number) return null;
-    return { group: text(row["分類"]) || "その他", name, kana: text(row["読み"]), number, note: text(row["備考"]) };
+    return { group: text(row["大分類"]) || "その他", name, number, note: text(row["説明"]) };
   }
 
   async function loadMaster() {
@@ -179,7 +180,7 @@
       readCsv("master/containers.csv", ["材料コード"]),
       readCsv("master/test_items.csv", ["項目コード", "名称", "材料コード"]),
       // 電話帳は置かなくても使えるよう、読めなくても容器・検査項目の表示は止めない
-      readCsv("master/phonebook.csv", ["名称", "内線番号"]).catch((e) => ({ error: e.message })),
+      readCsv("master/phonebook.csv", ["大分類", "小分類", "内線番号"]).catch((e) => ({ error: e.message })),
     ]);
     // 「最終更新」には、読み込んだ時刻ではなくCSVファイル自体の更新日時を出す
     const times = [c.lastModified, t.lastModified, p.lastModified].filter((v) => v && !Number.isNaN(v));
@@ -336,14 +337,12 @@
         function update() {
           const q = normalize(input.value.trim());
           // マスタをまだ読めていない間は探さない（下で「読み込み中」を出す）
-          const { rows, count, message } = master.data ? search(q) : { rows: [] };
+          const { rows, count } = master.data ? search(q) : { rows: [] };
           root.querySelector("[data-meta]").innerHTML = show(updatedAt(count));
           root.querySelector("[data-body]").innerHTML = show(
             !master.data
               ? waiting()
-              : message
-                ? html`<p class="state">${message}</p>`
-                : rows.length > 0
+              : rows.length > 0
                 ? html`<ul class="card list">${rows}</ul>`
                 : html`<p class="state">${q ? empty : hint}</p>`,
           );
@@ -369,7 +368,7 @@
         "容器コードや種類から探します",
       )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav>${
         // 電話帳は容器を調べる2つとは用途が違うので、枠を分けて間をあける
-        html`<nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "部署名から内線番号を探します")}</nav>`
+        html`<nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "検査部門の内線番号を選びます")}</nav>`
       }</div>`,
       mount: scanner.mount,
     };
@@ -454,37 +453,36 @@
     )}<span>${p.number}</span></a>`;
   }
 
-  const phonebookPage = () =>
-    listPage({
-      title: "電話帳",
-      placeholder: "部署名・読み・番号で検索",
-      empty: "該当する連絡先が見つかりません",
-      search(q) {
-        const book = master.data.phonebook;
-        if (!book) {
-          return {
-            message: "電話帳がまだありません。院内サーバーの master フォルダに phonebook.csv を置くと、ここに出ます。",
-          };
+  // 検索欄は置かず、大分類の見出しの下に小分類（説明つき）と番号を並べる（並びはCSVに書いた順）
+  function phonebookPage() {
+    return {
+      html: html`<div class="page">${toolbar()}<h1 class="title">電話帳</h1><div data-meta></div><div data-body></div></div>`,
+      mount(root) {
+        function update() {
+          const book = master.data && master.data.phonebook;
+          root.querySelector("[data-meta]").innerHTML = show(book && updatedAt(book.length));
+          root.querySelector("[data-body]").innerHTML = show(
+            !master.data
+              ? waiting()
+              : !book
+                ? html`<p class="state">電話帳がまだありません。院内サーバーの master フォルダに phonebook.csv を置くと、ここに出ます。</p>`
+                : html`<ul class="card list">${[...new Set(book.map((p) => p.group))].map((g) => [
+                    html`<li class="group">${g}</li>`,
+                    book
+                      .filter((p) => p.group === g)
+                      .map(
+                        (p) =>
+                          html`<li><div class="row"><span class="row-text"><span class="row-title">${p.name}</span>${
+                            p.note && html`<span class="row-sub">${p.note}</span>`
+                          }</span>${phoneButton(p)}</div></li>`,
+                      ),
+                  ])}</ul>`,
+          );
         }
-        const found = q ? book.filter((p) => searchKey(p, p.name, p.kana, p.number, p.group, p.note).includes(q)) : book;
-        // 分類ごとに見出しを付けて並べる（並びはCSVに書いた順）
-        const groups = [...new Set(found.map((p) => p.group))];
-        return {
-          count: found.length,
-          rows: groups.map((g) => [
-            html`<li class="group">${g}</li>`,
-            found
-              .filter((p) => p.group === g)
-              .map(
-                (p) =>
-                  html`<li><div class="row"><span class="row-text"><span class="row-title">${p.name}</span>${
-                    p.note && html`<span class="row-sub">${p.note}</span>`
-                  }</span>${phoneButton(p)}</div></li>`,
-              ),
-          ]),
-        };
+        return { update };
       },
-    });
+    };
+  }
 
   // ================================================================ 容器詳細
 

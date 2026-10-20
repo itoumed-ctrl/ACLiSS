@@ -9,7 +9,7 @@
      「材料」→ `containers.csv`、「オーダ可能項目」→ `test_items.csv` を、UTF-8（BOM付き）のCSVにして入れる。
      このxlsxは院内のデータなのでリポジトリには入れていない。手元にない時はユーザーに渡してもらう。
    - `ログ集計ツール.html` … `intranet/log-summary.html` のコピー
-   - `電話帳ひな型.csv` … 1行目 `分類,名称,読み,内線番号,備考` だけのCSV（UTF-8・BOM付き）
+   - `電話帳ひな型.csv` … 1行目 `大分類,小分類,内線番号,説明` だけのCSV（UTF-8・BOM付き）
 2. **プレビュー**: 同じURLのまま公開し直す。
    - アプリ: `intranet-preview/acliss-preview.html` → https://claude.ai/artifact/3Zq6YrB63hvNcmFxnkRsgM
    - ログ管理ダッシュボード: `intranet-preview/log-dashboard-preview.html` → https://claude.ai/artifact/4P6aHi8wcdkdAWrdHFEyif
