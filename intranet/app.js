@@ -257,7 +257,17 @@
       .toLowerCase();
   }
 
-  const matches = (query, ...fields) => fields.some((f) => f && normalize(f).includes(query));
+  // 検索用にそろえた文字は、マスタを読んだ後に1件につき1回だけ作って覚えておく（入力のたびに作り直さない）。
+  // 項目は改行でつなぐので、検索語が2つの項目にまたがって一致することはない
+  const searchKeys = new WeakMap();
+  function searchKey(record, ...fields) {
+    let key = searchKeys.get(record);
+    if (key === undefined) {
+      key = normalize(fields.filter(Boolean).join("\n"));
+      searchKeys.set(record, key);
+    }
+    return key;
+  }
   const containerName = (c) => [c.vessel, c.material].filter(Boolean).join(" － ");
 
   // 検査バーコード（12桁）の9〜11桁目が容器コード（12桁目はチェックデジット）。例: 000000001210 → 121
@@ -360,7 +370,9 @@
       placeholder: "容器コード・種類で絞り込み",
       empty: "該当する容器が見つかりません",
       search(q) {
-        const found = q ? containers().filter((c) => matches(q, c.code, c.vessel, c.material, c.dispense)) : containers();
+        const found = q
+          ? containers().filter((c) => searchKey(c, c.code, c.vessel, c.material, c.dispense).includes(q))
+          : containers();
         return {
           count: found.length,
           rows: found.map((c) =>
@@ -391,7 +403,13 @@
       search(q) {
         if (!q) return { rows: [] };
         const byCode = new Map(containers().map((c) => [c.code, c]));
-        const found = testItems().filter((t) => matches(q, t.name)).slice(0, 50);
+        // 表示するのは50件までなので、50件見つかった所で探すのをやめる
+        const found = [];
+        for (const t of testItems()) {
+          if (!searchKey(t, t.name).includes(q)) continue;
+          found.push(t);
+          if (found.length === 50) break;
+        }
         return {
           rows: found.map((t) => {
             if (!t.container) return row({ title: t.name, sub: "対応する容器コードが未設定です" });

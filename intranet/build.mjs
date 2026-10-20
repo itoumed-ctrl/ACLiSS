@@ -86,7 +86,9 @@ async function buildPreview() {
   const page = html
     .replace(/<link rel="stylesheet"[^>]*>/, () => `<style>${css}${PREVIEW_BAR_CSS}</style>`)
     .replace("<body>", () => `<body>\n    ${PREVIEW_BAR}`)
-    .replace(/<script src="app\.js[^"]*"><\/script>/, () => scripts.map(inlineScript).join("\n"));
+    // 本番では app.js を head に defer で置くが、埋め込む時はページの最後で動かす
+    .replace(/\s*<!-- defer:[^>]*-->\s*<script src="app\.js[^"]*" defer><\/script>/, () => "")
+    .replace("</body>", () => `${scripts.map(inlineScript).join("\n")}\n  </body>`);
 
   const previewDir = path.join(root, "intranet-preview");
   await mkdir(previewDir, { recursive: true });
