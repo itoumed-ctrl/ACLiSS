@@ -73,7 +73,11 @@ async function buildPreview() {
   ];
 
   // 置き換える文字列に「$」が含まれていても崩れないよう、関数で置き換える
-  const html = (await readApp("index.html"))
+  let indexHtml = await readApp("index.html");
+  for (const [file, dataUri] of Object.entries(assets)) {
+    indexHtml = indexHtml.replaceAll(`${file}?v=${buildId}`, () => dataUri);
+  }
+  const html = indexHtml
     .replace("<title>ACLiSS</title>", () => "<title>ACLiSS 院内版プレビュー</title>")
     .replace(/ *<link rel="(icon|apple-touch-icon|manifest)"[^>]*>\n/g, () => "");
   const css = await readApp("app.css");
