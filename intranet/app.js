@@ -739,7 +739,7 @@
       e.preventDefault();
       const code = codeFromLabelDigits(input.value);
       if (!code) {
-        formError.textContent = "11桁の数字で入力してください（ラベルに印字されている数字をそのまま）";
+        formError.textContent = "11桁の数字で入力してください（検査ラベルに印字されている数字をそのまま）";
         formError.hidden = false;
         return;
       }
@@ -781,7 +781,7 @@
             {},
             h("h1", { class: "scan-title" }, "バーコードから検索"),
             // 狭い画面でも言葉の途中で改行しないよう、文節ごとに区切る
-            h("p", { class: "scan-sub" }, h("span", {}, "ラベルのバーコードを"), h("span", {}, "カメラで読み取ってください")),
+            h("p", { class: "scan-sub" }, h("span", {}, "検査ラベルのバーコードを"), h("span", {}, "カメラで読み取ってください")),
           ),
         ),
         camera,
@@ -790,7 +790,7 @@
         h(
           "form",
           { class: "manual", onsubmit: onManualSubmit },
-          h("label", { for: "label-digits" }, "カメラがうまく読み取れない場合は、ラベルの11桁の数字を直接入力してください。"),
+          h("label", { for: "label-digits" }, "カメラがうまく読み取れない場合は、検査ラベルの11桁の数字を直接入力してください。"),
           h("div", { class: "input-group" }, input, h("button", { type: "submit" }, "検索")),
           formError,
         ),
