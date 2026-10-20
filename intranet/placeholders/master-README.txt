@@ -1,4 +1,4 @@
-このフォルダに、次の2つのCSVファイルを置いてください。
+このフォルダに、次のCSVファイルを置いてください（phonebook.csv は置かなくても使えます）。
 
   containers.csv   … ACLiSSマスタ.xlsx の「材料」シートをCSVで保存したもの
   test_items.csv   … ACLiSSマスタ.xlsx の「オーダ可能項目」シートをCSVで保存したもの
