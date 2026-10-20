@@ -395,16 +395,19 @@ a.row:active {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 4rem;
-  height: 3rem;
+  width: 3.5rem;
+  height: 3.5rem;
   border-radius: var(--radius-sm);
   background: var(--navy-tint);
   color: var(--navy);
 }
+/* PNGのアイコンは、角丸の四角ごと絵になっているので枠いっぱいに出す */
+.menu-icon.picture {
+  background: none;
+}
 .menu-icon img {
-  width: 3.5rem;
-  height: 2.25rem;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
 }
 .row-main {
   flex: 1;

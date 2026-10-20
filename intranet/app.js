@@ -363,13 +363,13 @@
     };
   }
 
-  // アイコンは線のアイコン名か、icons/ に置いたPNGのファイル名
+  // アイコンは線のアイコン名か、icons/ に置いたPNG（角丸の四角まで描いた正方形）のファイル名
   function menuItem(href, iconName, title, description) {
     const picture = iconName.endsWith(".png") ? h("img", { src: asset(`icons/${iconName}`), alt: "" }) : icon(iconName);
     return h(
       "a",
       { href },
-      h("span", { class: "menu-icon" }, picture),
+      h("span", { class: picture.tagName === "IMG" ? "menu-icon picture" : "menu-icon" }, picture),
       h("span", { class: "row-main" }, h("span", { class: "row-title" }, title), h("p", { class: "row-sub" }, description)),
       h("span", { class: "chevron" }, icon("chevron")),
     );
