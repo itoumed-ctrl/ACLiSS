@@ -151,7 +151,8 @@
       dispensePhs: phone(row["内線番号①"]),
       inquiry: text(row["問い合わせ先"]),
       inquiryPhs: phone(row["内線番号②"]),
-      amount: amount === "----" ? "規定なし" : amount,
+      // 採取量は数字だけで書かれているので単位を付ける（単位まで書かれた値はそのまま）
+      amount: amount === "----" ? "規定なし" : amount && /^\d+(\.\d+)?$/.test(amount) ? `${amount} mL` : amount,
       // 指示ラベルは、指示①〜③に文が入っているものだけ出す
       instructions: [row["指示①"], row["指示②"], row["指示③"]].map(text).filter(Boolean),
       notes: text(row["注意事項"]),
