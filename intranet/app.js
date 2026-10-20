@@ -460,6 +460,15 @@
       if (!phs) return null;
       const number = phs.replace(/[^\d+*#]/g, "");
       if (!number) return h("span", { class: "fact-sub" }, `内線 ${phs}`);
+      // プレビュー（Claudeの画面の中）では電話の画面に移れず、プレビューが開けなくなるので発信しない
+      if (preview) {
+        const hint = h("span", {}, "電話をかける");
+        const onclick = (e) => {
+          e.preventDefault();
+          hint.textContent = "プレビューでは発信できません";
+        };
+        return h("a", { class: "call", href: `tel:${number}`, onclick }, icon("phone"), `内線 ${phs}`, hint);
+      }
       return h("a", { class: "call", href: `tel:${number}` }, icon("phone"), `内線 ${phs}`, h("span", {}, "電話をかける"));
     };
     return [
