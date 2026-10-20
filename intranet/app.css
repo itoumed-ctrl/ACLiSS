@@ -203,6 +203,18 @@ main {
   background: #fff;
   padding: 1.25rem;
 }
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 2px solid var(--navy-20);
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 1.25rem;
+}
+.home-card > :last-child {
+  margin-top: 0.75rem;
+}
 .home-button:active {
   background: var(--navy-5);
 }
@@ -450,8 +462,10 @@ main {
 }
 .manual .field {
   flex: 1;
+  min-width: 0;
 }
 .manual button {
+  flex-shrink: 0;
   border-radius: 0.25rem;
   background: var(--navy);
   padding: 0.5rem 1rem;

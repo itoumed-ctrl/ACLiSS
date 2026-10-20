@@ -305,15 +305,24 @@
 
   // ---------------------------------------------------------------- トップ
 
+  // バーコードの枠は、ほかの2つのボタンと同じ見た目の枠の中で、開いた時点からカメラを動かす
   function homePage() {
+    const scanner = barcodeScanner();
     return {
       el: h(
         "div",
         { class: "page home" },
-        homeButton("#/scan", "バーコードから検索", "ラベルのバーコードをカメラで読み取ります"),
+        h(
+          "section",
+          { class: "home-card" },
+          h("span", { class: "home-button-title" }, "バーコードから検索"),
+          h("span", { class: "home-button-desc" }, "ラベルのバーコードをカメラに映してください"),
+          scanner.el,
+        ),
         homeButton("#/containers", "容器一覧から選ぶ", "容器コードや種類から探します"),
         homeButton("#/search", "検査項目から探す", "検査項目名で検索します"),
       ),
+      destroy: scanner.destroy,
     };
   }
 
@@ -768,7 +777,7 @@
     if (path === currentPath) return;
     currentPath = path;
 
-    // 画面ごとに作り直す（スキャン画面を離れたらカメラも止まる）
+    // 画面ごとに作り直す（カメラのある画面を離れたらカメラも止まる）
     if (current.destroy) current.destroy();
     current = pageFor(path || "/", query);
     main.replaceChildren(current.el);
