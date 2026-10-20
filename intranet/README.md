@@ -109,7 +109,7 @@ npm run build:intranet -- --preview # あわせて開発確認用の1ファイ�
 | ファイル | 内容 |
 |---|---|
 | `intranet/index.html` | ヘッダーと、画面を入れる枠 |
-| `intranet/app.css` | 見た目（Vercel版と同じ配色・文字の大きさ・余白） |
+| `intranet/app.css` | 見た目（院内サーバー版独自のデザイン。色はVercel版と同じ紺と金） |
 | `intranet/app.js` | CSVの読み込み・各画面・バーコードスキャン・画面の切り替え |
 
 `npm run build:intranet` は、この3ファイルにアイコンと、`node_modules` にあるバーコード読み取り

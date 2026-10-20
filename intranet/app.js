@@ -251,11 +251,6 @@
       .toLowerCase();
   }
 
-  // 一覧・検索画面で表示する容器名（VESSEL・MATERIAL併記）
-  function containerLabel(c) {
-    return [c.vessel, c.material].filter(Boolean).join(" － ");
-  }
-
   // 検査バーコード（12桁）の下4桁のうち、末尾のチェックデジットを除いた3桁が容器コード。
   // 例: "000000001210" → "121"。チェックデジット自体の検証はしない。
   function codeFromBarcode(barcode) {
@@ -271,16 +266,36 @@
 
   // ---------------------------------------------------------------- 画面に共通の部品
 
-  function backNav() {
+  // 線で描いたアイコン（24×24）。中身は固定の文字列なので innerHTML で入れてよい。
+  const ICONS = {
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
+    chevron: '<path d="M9 5l7 7-7 7"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="3"/>',
+    flask: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 006 21h12a1.7 1.7 0 001.5-2.5L14 9V3"/><path d="M7.5 15h9"/>',
+    light: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 00-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0012 3z"/>',
+    cameraOff: '<path d="M3 3l18 18"/><path d="M9.5 5H15l1.5 2H19a2 2 0 012 2v8.5M17 19H5a2 2 0 01-2-2V9a2 2 0 012-2h1"/><path d="M9.9 10.1a3 3 0 004 4"/>',
+    tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  };
+
+  function icon(name) {
+    const el = h("span", { class: "icon", "aria-hidden": "true" });
+    el.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`;
+    return el;
+  }
+
+  function toolbar() {
     return h(
-      "div",
-      { class: "back-nav" },
-      h("button", { type: "button", onclick: () => history.back() }, "← 戻る"),
-      h("a", { href: "#/" }, "ホーム"),
+      "nav",
+      { class: "toolbar" },
+      h("button", { type: "button", onclick: () => history.back() }, icon("back"), "戻る"),
+      h("a", { href: "#/" }, icon("home"), "ホーム"),
     );
   }
 
-  function updatedAtNotice() {
+  function updatedAtNotice(count) {
     if (!master.data) return null;
     const formatted = new Date(master.data.updatedAt).toLocaleString("ja-JP", {
       month: "long",
@@ -288,68 +303,83 @@
       hour: "2-digit",
       minute: "2-digit",
     });
-    return h(
-      "p",
-      { class: "notice" },
-      master.isOffline ? `オフラインのため前回のデータを表示中（最終更新: ${formatted}）` : `最終更新: ${formatted}`,
-    );
+    if (master.isOffline) {
+      return h("p", { class: "meta offline" }, `オフラインのため前回のデータを表示中（最終更新 ${formatted}）`);
+    }
+    return h("p", { class: "meta" }, `最終更新 ${formatted}`, count != null && `・${count}件`);
   }
 
   // 一覧がまだ空の間だけ「読み込み中」「エラー」を出す
   function loadingState(items) {
     if (items.length > 0) return null;
-    if (master.loading) return h("p", {}, "読み込み中...");
-    if (master.error) return h("p", { class: "error-text" }, `エラー: ${master.error}`);
+    if (master.loading) return h("p", { class: "state" }, "読み込み中...");
+    if (master.error) return h("p", { class: "alert" }, `エラー: ${master.error}`);
     return null;
+  }
+
+  // 一覧・検索の1行。href がなければ押せない行になる
+  function row({ href, lead, title, sub }) {
+    return h(
+      href ? "a" : "div",
+      { href, class: href ? "row" : "row unset" },
+      lead,
+      h("span", { class: "row-main" }, h("span", { class: "row-title" }, title), sub && h("p", { class: "row-sub" }, sub)),
+      href && h("span", { class: "chevron" }, icon("chevron")),
+    );
+  }
+
+  function searchBar(input, meta) {
+    return h("div", { class: "search-bar" }, h("label", { class: "search" }, icon("search"), input), meta);
+  }
+
+  // 容器名（VESSEL・MATERIAL併記）
+  function containerLabel(c) {
+    return [c.vessel, c.material].filter(Boolean).join(" － ");
   }
 
   // ---------------------------------------------------------------- トップ
 
-  // バーコードの枠は、ほかの2つのボタンと同じ見た目の枠の中で、開いた時点からカメラを動かす
+  // バーコードの枠では、開いた時点からカメラを動かす
   function homePage() {
     const scanner = barcodeScanner();
     return {
       el: h(
         "div",
-        { class: "page home" },
+        { class: "page" },
+        scanner.el,
         h(
-          "section",
-          { class: "home-card" },
-          h("span", { class: "home-button-title" }, "バーコードから検索"),
-          h("span", { class: "home-button-desc" }, "ラベルのバーコードをカメラに映してください"),
-          scanner.el,
+          "div",
+          { class: "card menu" },
+          menuItem("#/containers", "list", "容器一覧から選ぶ", "容器コードや種類から探します"),
+          menuItem("#/search", "flask", "検査項目から探す", "検査項目名で検索します"),
         ),
-        homeButton("#/containers", "容器一覧から選ぶ", "容器コードや種類から探します"),
-        homeButton("#/search", "検査項目から探す", "検査項目名で検索します"),
       ),
       destroy: scanner.destroy,
     };
   }
 
-  function homeButton(href, title, description) {
+  function menuItem(href, iconName, title, description) {
     return h(
       "a",
-      { href, class: "home-button" },
-      h("span", { class: "home-button-title" }, title),
-      h("span", { class: "home-button-desc" }, description),
+      { href },
+      h("span", { class: "menu-icon" }, icon(iconName)),
+      h("span", { class: "row-main" }, h("span", { class: "row-title" }, title), h("p", { class: "row-sub" }, description)),
+      h("span", { class: "chevron" }, icon("chevron")),
     );
   }
 
   function scanPage() {
     const scanner = barcodeScanner();
-    return {
-      el: h("div", { class: "page" }, backNav(), h("h1", { class: "title mb-4" }, "バーコードから検索"), scanner.el),
-      destroy: scanner.destroy,
-    };
+    return { el: h("div", { class: "page" }, toolbar(), scanner.el), destroy: scanner.destroy };
   }
 
   // ---------------------------------------------------------------- 容器一覧
 
   function containersPage() {
-    const input = h("input", { type: "text", class: "field", placeholder: "ラベル右下の3桁番号を入力" });
-    const notice = h("div");
+    const input = h("input", { type: "search", placeholder: "容器コード・種類で絞り込み" });
+    const meta = h("div");
     const status = h("div");
-    const list = h("ul", { class: "list" });
+    const list = h("ul", { class: "card list" });
     const empty = h("div");
 
     function update() {
@@ -363,36 +393,30 @@
           )
         : all;
 
-      fill(notice, updatedAtNotice());
+      fill(meta, updatedAtNotice(found.length));
       fill(status, loadingState(all));
+      list.hidden = found.length === 0;
       fill(
         list,
         found.map((c) =>
           h(
             "li",
             {},
-            h(
-              "a",
-              { href: `#/containers/${c.container_code}`, class: "container-link" },
-              h("span", { class: "code-badge" }, c.container_code),
-              h("span", { class: "container-name" }, containerLabel(c)),
-            ),
+            row({
+              href: `#/containers/${c.container_code}`,
+              lead: h("span", { class: "code" }, c.container_code),
+              title: c.vessel || c.material || "",
+              sub: c.vessel && c.material,
+            }),
           ),
         ),
       );
-      fill(empty, !master.loading && all.length > 0 && found.length === 0 && h("p", { class: "empty" }, "該当する容器が見つかりません"));
+      fill(empty, !master.loading && all.length > 0 && found.length === 0 && h("p", { class: "state" }, "該当する容器が見つかりません"));
     }
 
     input.addEventListener("input", update);
     return {
-      el: h(
-        "div",
-        { class: "page" },
-        h("div", { class: "sticky-head" }, backNav(), h("h1", { class: "title mb-4" }, "容器一覧から選ぶ"), input, notice),
-        status,
-        list,
-        empty,
-      ),
+      el: h("div", { class: "page" }, toolbar(), h("h1", { class: "page-title" }, "容器一覧から選ぶ"), searchBar(input, meta), status, list, empty),
       update,
     };
   }
@@ -401,16 +425,11 @@
 
   function searchPage(query) {
     // 検索語をURLにも残し、容器の画面から戻ってきたときに検索語が消えないようにする。
-    const input = h("input", {
-      type: "text",
-      class: "field",
-      placeholder: "検査項目名を入力（例: グルコース）",
-      autofocus: true,
-    });
+    const input = h("input", { type: "search", placeholder: "検査項目名（例: グルコース）", autofocus: true });
     input.value = new URLSearchParams(query).get("q") || "";
-    const notice = h("div");
+    const meta = h("div");
     const status = h("div");
-    const list = h("ul", { class: "list" });
+    const list = h("ul", { class: "card list" });
     const empty = h("div");
 
     function update() {
@@ -418,10 +437,11 @@
       const byCode = new Map(containers().map((c) => [c.container_code, c]));
       const found = q ? testItems().filter((t) => normalizeForSearch(t.test_item_name).includes(q)).slice(0, 50) : [];
 
-      fill(notice, updatedAtNotice());
-      fill(status, loadingState(testItems()), !q && h("p", { class: "muted" }, "検査項目名の一部を入力してください"));
+      fill(meta, updatedAtNotice());
+      fill(status, loadingState(testItems()), !q && h("p", { class: "state" }, "検査項目名の一部を入力してください"));
+      list.hidden = found.length === 0;
       fill(list, found.map((t) => h("li", {}, testItemRow(t, byCode.get(t.container_code)))));
-      fill(empty, q && !master.loading && found.length === 0 && h("p", { class: "empty" }, "該当する検査項目が見つかりません"));
+      fill(empty, q && !master.loading && found.length === 0 && h("p", { class: "state" }, "該当する検査項目が見つかりません"));
     }
 
     input.addEventListener("input", () => {
@@ -430,101 +450,86 @@
       update();
     });
     return {
-      el: h(
-        "div",
-        { class: "page" },
-        h("div", { class: "sticky-head" }, backNav(), h("h1", { class: "title mb-4" }, "検査項目から探す"), input, notice),
-        status,
-        list,
-        empty,
-      ),
+      el: h("div", { class: "page" }, toolbar(), h("h1", { class: "page-title" }, "検査項目から探す"), searchBar(input, meta), status, list, empty),
       update,
     };
   }
 
   function testItemRow(item, container) {
     if (!item.container_code) {
-      return h(
-        "div",
-        { class: "item unset" },
-        h("span", { class: "item-name" }, item.test_item_name),
-        h("span", { class: "item-sub" }, "対応する容器コードが未設定です"),
-      );
+      return row({ title: item.test_item_name, sub: "対応する容器コードが未設定です" });
     }
-    return h(
-      "a",
-      { href: `#/containers/${item.container_code}`, class: "item" },
-      h("span", { class: "item-name" }, item.test_item_name),
-      h("span", { class: "item-sub" }, `容器コード: ${item.container_code}`, container && `（${containerLabel(container)}）`),
-    );
+    return row({
+      href: `#/containers/${item.container_code}`,
+      title: item.test_item_name,
+      sub: `容器 ${item.container_code}` + (container ? `・${containerLabel(container)}` : ""),
+    });
   }
 
   // ---------------------------------------------------------------- 容器詳細
 
   function containerPage(code) {
-    const body = h("div");
+    const body = h("div", { class: "page" });
 
     function update() {
       const c = containers().find((x) => x.container_code === code);
-      if (c) fill(body, containerDetail(c));
-      else if (master.loading) fill(body, h("p", {}, "読み込み中..."));
-      else if (master.error) fill(body, h("p", { class: "alert" }, `エラー: ${master.error}`));
-      else fill(body, h("p", { class: "alert" }, `容器コード「${code}」は見つかりませんでした。`));
+      if (c) fill(body, toolbar(), containerDetail(c));
+      else if (master.loading) fill(body, toolbar(), h("p", { class: "state" }, "読み込み中..."));
+      else if (master.error) fill(body, toolbar(), h("p", { class: "alert" }, `エラー: ${master.error}`));
+      else fill(body, toolbar(), h("p", { class: "alert" }, `容器コード「${code}」は見つかりませんでした。`));
     }
 
-    return { el: h("div", { class: "page" }, backNav(), body), update };
+    return { el: body, update };
   }
 
   function containerDetail(c) {
-    const extension = (phs) => (phs ? `（内線: ${phs}）` : "");
-    return h(
-      "div",
-      { class: "detail" },
+    const extension = (phs) => phs && h("p", { class: "fact-sub" }, `内線 ${phs}`);
+    return [
       h(
         "div",
         {},
+        h("p", { class: "eyebrow" }, "容器コード"),
         h("h1", { class: "detail-code" }, c.container_code),
-        (c.vessel || c.material) && h("p", { class: "detail-name" }, containerLabel(c)),
+        (c.vessel || c.material) &&
+          h("p", { class: "detail-name" }, c.vessel || c.material, c.vessel && c.material && h("span", {}, c.material)),
       ),
       // 写真ファイルが見つからない・読み込めない場合は、壊れた画像を出さずに枠ごと消す。
       c.image_url &&
-        h("img", {
-          src: c.image_url,
-          alt: `容器コード${c.container_code}の写真`,
-          class: "photo",
-          onerror: (e) => e.target.remove(),
-        }),
-      detailRow("採取量", c.collection_amount || "規定なし", true),
-      detailRow(
-        "払い出し場所",
-        c.dispense_location ? c.dispense_location + extension(c.dispense_phs) : "未設定",
-        true,
+        h(
+          "div",
+          { class: "card photo" },
+          h("img", {
+            src: c.image_url,
+            alt: `容器コード${c.container_code}の写真`,
+            onerror: (e) => e.target.parentNode.remove(),
+          }),
+        ),
+      h(
+        "div",
+        { class: "card" },
+        fact("採取量", c.collection_amount || "規定なし"),
+        fact("払い出し場所", c.dispense_location || "未設定", extension(c.dispense_phs)),
       ),
       c.instructions.length > 0 &&
         h(
           "div",
-          { class: "box instructions" },
-          h("p", { class: "box-title" }, "指示ラベル"),
-          h("ul", { class: "box-body" }, c.instructions.map((text) => h("li", {}, text))),
+          { class: "callout label" },
+          h("p", { class: "callout-title" }, icon("tag"), "指示ラベル"),
+          h("ul", {}, c.instructions.map((text) => h("li", {}, text))),
         ),
-      c.notes &&
-        h(
-          "div",
-          { class: "box notes" },
-          h("p", { class: "box-title" }, "注意事項"),
-          h("p", { class: "box-body" }, c.notes),
-        ),
+      c.notes && h("div", { class: "callout" }, h("p", { class: "callout-title" }, icon("info"), "注意事項"), h("p", {}, c.notes)),
       (c.inquiry_dept || c.inquiry_phs) &&
-        detailRow("検査問い合わせ先", (c.inquiry_dept || "") + extension(c.inquiry_phs)),
-    );
+        h("div", { class: "card" }, fact("検査問い合わせ先", c.inquiry_dept || "", extension(c.inquiry_phs), true)),
+    ];
   }
 
-  function detailRow(label, value, big) {
+  function fact(label, value, sub, small) {
     return h(
       "div",
-      {},
-      h("p", { class: "row-label" }, label),
-      h("p", { class: big ? "row-value big" : "row-value" }, value),
+      { class: "fact" },
+      h("p", { class: "eyebrow" }, label),
+      h("p", { class: small ? "fact-value small" : "fact-value" }, value),
+      sub,
     );
   }
 
@@ -565,13 +570,20 @@
 
     const video = h("video", { muted: true, playsinline: true, onclick: onVideoTap });
     video.muted = true;
-    const status = h("span", { class: "camera-status" }, "カメラを起動中...");
-    const torch = h("button", { type: "button", class: "torch", hidden: true, onclick: toggleTorch }, "💡 ライトをつける");
-    const camera = h("div", { class: "camera" }, video, h("div", { class: "camera-guide" }), status, torch);
-    const cameraError = h("p", { class: "alert mb-4", hidden: true });
-    const scanned = h("p", { class: "scanned", hidden: true });
-    const input = h("input", { type: "text", inputmode: "numeric", class: "field", placeholder: "例: 00000000121" });
-    const formError = h("p", { class: "form-error", hidden: true });
+    const status = h("span", { class: "status" }, "カメラを起動中");
+    const torchLabel = h("span", {}, "ライト");
+    const torch = h("button", { type: "button", class: "torch", hidden: true, onclick: toggleTorch }, icon("light"), torchLabel);
+    const camera = h("div", { class: "viewport" }, video, h("div", { class: "guide" }), status, torch);
+    const cameraError = h("div", { class: "camera-off", hidden: true });
+    const scanned = h("p", { class: "scan-note", hidden: true });
+    const input = h("input", {
+      id: "label-digits",
+      type: "text",
+      inputmode: "numeric",
+      autocomplete: "off",
+      placeholder: "例: 00000000121",
+    });
+    const formError = h("p", { class: "field-error", hidden: true });
 
     function stop() {
       stopped = true;
@@ -582,15 +594,20 @@
       if (stopped || found) return;
       const code = codeFromBarcode(raw);
       if (!code) {
-        fill(scanned, "読み取った内容: ", h("span", {}, raw), h("br"), "12桁の数字として認識できなかったため、容器コードへ変換できませんでした。");
+        fill(scanned, "読み取った内容 ", h("span", {}, raw), h("br"), "12桁の数字として認識できなかったため、容器コードへ変換できませんでした。");
         scanned.hidden = false;
         return;
       }
       found = true;
       cleanups.splice(0).forEach((fn) => fn());
-      camera.classList.add("success");
-      status.textContent = "✓ 読み取り完了";
+      camera.classList.replace("scanning", "success");
+      status.textContent = "読み取り完了";
       setTimeout(() => (location.hash = `/containers/${code}`), 400);
+    }
+
+    function scanning() {
+      camera.classList.add("scanning");
+      status.textContent = "スキャン中";
     }
 
     function showTorchIfSupported(capabilities) {
@@ -618,7 +635,7 @@
       } catch {
         // 対応確認に失敗しても致命的ではないので無視する
       }
-      status.textContent = "スキャン中...";
+      scanning();
 
       let rafId = 0;
       let busy = false;
@@ -655,7 +672,7 @@
         return;
       }
       zxing = controls;
-      status.textContent = "スキャン中...";
+      scanning();
       try {
         showTorchIfSupported(controls.streamVideoCapabilitiesGet && controls.streamVideoCapabilitiesGet((t) => [t]));
       } catch {
@@ -679,7 +696,7 @@
         else if (zxing && zxing.switchTorch) await zxing.switchTorch(next);
         torchOn = next;
         torch.classList.toggle("on", next);
-        torch.textContent = next ? "💡 ライトを消す" : "💡 ライトをつける";
+        torchLabel.textContent = next ? "ライトを消す" : "ライト";
       } catch {
         // 端末が対応していない場合は何もしない
       }
@@ -736,20 +753,30 @@
             : e instanceof Error
               ? e.message
               : "カメラを起動できませんでした。カメラの利用を許可してください。";
-        fill(cameraError, `カメラを利用できません: ${reason}`, h("br"), "下の欄にラベルの11桁の数字を直接入力してください。");
+        fill(
+          cameraError,
+          icon("cameraOff"),
+          h("div", {}, h("strong", {}, "カメラを利用できません"), reason),
+        );
         cameraError.hidden = false;
       });
 
     return {
       el: h(
-        "div",
-        {},
+        "section",
+        { class: "card scan" },
+        h("h1", { class: "scan-title" }, "バーコードから検索"),
+        h("p", { class: "scan-sub" }, "ラベルのバーコードをカメラに映してください"),
         camera,
         cameraError,
         scanned,
-        h("p", { class: "hint" }, "カメラがうまく読み取れない場合は、ラベルの11桁の数字を直接入力してください。"),
-        h("form", { class: "manual", onsubmit: onManualSubmit }, input, h("button", { type: "submit" }, "検索")),
-        formError,
+        h(
+          "form",
+          { class: "manual", onsubmit: onManualSubmit },
+          h("label", { for: "label-digits" }, "カメラがうまく読み取れない場合は、ラベルの11桁の数字を直接入力してください。"),
+          h("div", { class: "input-group" }, input, h("button", { type: "submit" }, "検索")),
+          formError,
+        ),
       ),
       destroy: stop,
     };
@@ -764,7 +791,7 @@
     if (path === "/search") return searchPage(query);
     const detail = path.match(/^\/containers\/([^/]+)$/);
     if (detail) return containerPage(decodeURIComponent(detail[1]));
-    return { el: h("div", { class: "page" }, backNav(), h("p", {}, "ページが見つかりません。")) };
+    return { el: h("div", { class: "page" }, toolbar(), h("p", { class: "state" }, "ページが見つかりません。")) };
   }
 
   const main = document.getElementById("main");
