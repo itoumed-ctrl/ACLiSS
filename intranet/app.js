@@ -9,29 +9,22 @@
   // 開発確認用のプレビュー（npm run build:intranet -- --preview）では、CSVと画像がページに埋め込まれている
   const preview = window.__ACLISS_PREVIEW__;
 
-  // ================================================================ 部品
+  // ================================================================ HTMLの組み立て
 
-  // h("p", { class: "x" }, "文字", 要素…)。文字は文字として入るので、CSVの中身で画面が壊れない
-  function h(tag, attrs, ...children) {
-    const el = document.createElement(tag);
-    for (const [key, value] of Object.entries(attrs || {})) {
-      if (value == null || value === false) continue;
-      if (key.startsWith("on")) el.addEventListener(key.slice(2), value);
-      else el.setAttribute(key, value === true ? "" : value);
-    }
-    el.append(...clean(children));
-    return el;
+  // html`<p>${値}</p>` で画面のHTMLを作る。値は必ず文字として埋め込まれる（CSVの中身で画面が壊れない）。
+  // html`` で作ったものや、その配列はHTMLのまま入る。null・false・undefined は何も出さない。
+  function html(strings, ...values) {
+    return { html: strings.reduce((out, s, i) => out + s + (i < values.length ? show(values[i]) : ""), "") };
   }
 
-  function clean(children) {
-    return children.flat().filter((c) => c != null && c !== false && c !== "");
+  function show(v) {
+    if (v == null || v === false) return "";
+    if (Array.isArray(v)) return v.map(show).join("");
+    if (typeof v === "object" && "html" in v) return v.html;
+    return String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   }
 
-  function fill(el, ...children) {
-    el.replaceChildren(...clean(children));
-  }
-
-  // 線のアイコン（24×24）。中身は固定の文字列
+  // 線のアイコン（24×24）
   const ICONS = {
     back: '<path d="M15 5l-7 7 7 7"/>',
     home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
@@ -44,21 +37,11 @@
     phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/>',
   };
 
-  function icon(name) {
-    const el = h("span", { class: "icon", "aria-hidden": "true" });
-    el.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[name]}</svg>`;
-    return el;
-  }
+  const icon = (name) => ({ html: `<span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[name]}</svg></span>` });
 
-  // アプリに同梱した画像（icons/ など）
-  function asset(path) {
-    return (preview && preview.assets[path]) || `${path}?v=__BUILD_ID__`;
-  }
-
-  // icons/ の正方形のPNG（角丸の四角まで描いてある絵）
-  function tile(file) {
-    return h("img", { class: "tile", src: asset(`icons/${file}`), alt: "" });
-  }
+  // アプリに同梱した画像。icons/ のPNGは角丸の四角まで描いた正方形の絵
+  const asset = (path) => (preview && preview.assets[path]) || `${path}?v=__BUILD_ID__`;
+  const tile = (file) => html`<img class="tile" src="${asset(`icons/${file}`)}" alt="">`;
 
   // ================================================================ マスタ（CSV）
 
@@ -113,11 +96,9 @@
   }
 
   async function readCsv(path, required) {
-    let text;
+    let text = preview && preview.files[path];
     let lastModified = null;
-    if (preview) {
-      text = preview.files[path];
-    } else {
+    if (!preview) {
       const res = await fetch(path, { cache: "no-cache" });
       if (!res.ok) {
         throw new Error(`${path} を読み込めませんでした（${res.status}）。院内サーバーの master フォルダにファイルがあるか確認してください。`);
@@ -254,36 +235,19 @@
       .toLowerCase();
   }
 
-  function matches(query, ...fields) {
-    return fields.some((f) => f && normalize(f).includes(query));
-  }
-
-  function containerName(c) {
-    return [c.vessel, c.material].filter(Boolean).join(" － ");
-  }
+  const matches = (query, ...fields) => fields.some((f) => f && normalize(f).includes(query));
+  const containerName = (c) => [c.vessel, c.material].filter(Boolean).join(" － ");
 
   // 検査バーコード（12桁）の9〜11桁目が容器コード（12桁目はチェックデジット）。例: 000000001210 → 121
-  function codeFromBarcode(raw) {
-    const digits = raw.trim();
-    return /^\d{12}$/.test(digits) ? digits.slice(8, 11) : null;
-  }
+  const codeFromBarcode = (raw) => (/^\d{12}$/.test(raw.trim()) ? raw.trim().slice(8, 11) : null);
 
   // 検査ラベルに印字された11桁の数字の末尾3桁が容器コード
-  function codeFromDigits(raw) {
-    const digits = raw.trim();
-    return /^\d{11}$/.test(digits) ? digits.slice(-3) : null;
-  }
+  const codeFromDigits = (raw) => (/^\d{11}$/.test(raw.trim()) ? raw.trim().slice(-3) : null);
 
   // ================================================================ 画面の共通部品
 
-  function toolbar() {
-    return h(
-      "nav",
-      { class: "toolbar" },
-      h("button", { type: "button", onclick: () => history.back() }, icon("back"), "戻る"),
-      h("a", { href: "#/" }, icon("home"), "ホーム"),
-    );
-  }
+  const toolbar = () =>
+    html`<nav class="toolbar"><button type="button" data-back>${icon("back")}戻る</button><a href="#/">${icon("home")}ホーム</a></nav>`;
 
   function updatedAt(count) {
     if (!master.data) return null;
@@ -293,61 +257,56 @@
       hour: "2-digit",
       minute: "2-digit",
     });
-    if (master.error) return h("p", { class: "meta warn" }, `オフラインのため前回のデータを表示中（最終更新 ${date}）`);
-    return h("p", { class: "meta" }, `最終更新 ${date}`, count != null && `・${count}件`);
+    if (master.error) return html`<p class="meta warn">オフラインのため前回のデータを表示中（最終更新 ${date}）</p>`;
+    return html`<p class="meta">最終更新 ${date}${count != null && `・${count}件`}</p>`;
   }
 
   // データがまだ無い間だけ出す「読み込み中」「エラー」
   function waiting() {
     if (master.data) return null;
-    if (master.loading) return h("p", { class: "state" }, "読み込み中...");
-    if (master.error) return h("p", { class: "alert" }, `エラー: ${master.error}`);
+    if (master.loading) return html`<p class="state">読み込み中...</p>`;
+    if (master.error) return html`<p class="alert">エラー: ${master.error}</p>`;
     return null;
   }
 
   // 一覧の1行。href がなければ押せない（灰色の）行
   function row({ href, lead, title, sub }) {
-    return h(
-      "li",
-      {},
-      h(
-        href ? "a" : "div",
-        { href, class: href ? "row" : "row off" },
-        lead,
-        h("span", { class: "row-text" }, h("span", { class: "row-title" }, title), sub && h("span", { class: "row-sub" }, sub)),
-        href && icon("chevron"),
-      ),
-    );
+    const inner = html`${lead}<span class="row-text"><span class="row-title">${title}</span>${
+      sub && html`<span class="row-sub">${sub}</span>`
+    }</span>`;
+    return href
+      ? html`<li><a href="${href}" class="row">${inner}${icon("chevron")}</a></li>`
+      : html`<li><div class="row off">${inner}</div></li>`;
   }
 
-  // 検索欄つきの一覧画面（容器一覧・検査項目）
-  function listPage({ title, placeholder, query, autofocus, search, empty, hint }) {
-    const input = h("input", { type: "search", placeholder, autofocus });
-    input.value = query || "";
-    const meta = h("div");
-    const body = h("div");
-
-    function update() {
-      const q = normalize(input.value.trim());
-      const { rows, count } = search(q);
-      fill(meta, updatedAt(count));
-      if (!master.data) fill(body, waiting());
-      else if (rows.length > 0) fill(body, h("ul", { class: "card list" }, rows));
-      else fill(body, h("p", { class: "state" }, q ? empty : hint));
-    }
-
-    input.addEventListener("input", update);
+  // 検索欄つきの一覧画面（容器一覧・検査項目）。search(検索語) が行を返す
+  function listPage({ title, placeholder, query, autofocus, search, empty, hint, onInput }) {
     return {
-      el: h(
-        "div",
-        { class: "page" },
-        toolbar(),
-        h("h1", { class: "title" }, title),
-        h("div", { class: "search" }, h("label", {}, icon("search"), input), meta),
-        body,
-      ),
-      update,
-      input,
+      html: html`<div class="page">${toolbar()}<h1 class="title">${title}</h1>
+        <div class="search"><label>${icon("search")}<input type="search" placeholder="${placeholder}"${
+          autofocus && html` autofocus`
+        }></label><div data-meta></div></div><div data-body></div></div>`,
+      mount(root) {
+        const input = root.querySelector("input");
+        input.value = query || "";
+        function update() {
+          const q = normalize(input.value.trim());
+          const { rows, count } = search(q);
+          root.querySelector("[data-meta]").innerHTML = show(updatedAt(count));
+          root.querySelector("[data-body]").innerHTML = show(
+            !master.data
+              ? waiting()
+              : rows.length > 0
+                ? html`<ul class="card list">${rows}</ul>`
+                : html`<p class="state">${q ? empty : hint}</p>`,
+          );
+        }
+        input.addEventListener("input", () => {
+          update();
+          if (onInput) onInput(input.value);
+        });
+        return { update };
+      },
     };
   }
 
@@ -356,35 +315,25 @@
   function homePage() {
     const scanner = barcodeScanner();
     return {
-      el: h(
-        "div",
-        { class: "page" },
-        scanner.el,
-        h(
-          "nav",
-          { class: "card list menu" },
-          menuItem("#/containers", "menu-containers.png", "容器一覧から選ぶ", "容器コードや種類から探します"),
-          menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します"),
-        ),
-      ),
-      destroy: scanner.destroy,
+      html: html`<div class="page">${scanner.html}<nav class="card list menu">${menuItem(
+        "#/containers",
+        "menu-containers.png",
+        "容器一覧から選ぶ",
+        "容器コードや種類から探します",
+      )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav></div>`,
+      mount: scanner.mount,
     };
   }
 
-  function menuItem(href, file, title, sub) {
-    return h(
-      "a",
-      { href, class: "row" },
-      tile(file),
-      h("span", { class: "row-text" }, h("span", { class: "row-title" }, title), h("span", { class: "row-sub" }, sub)),
-      icon("chevron"),
-    );
-  }
+  const menuItem = (href, file, title, sub) =>
+    html`<a href="${href}" class="row">${tile(file)}<span class="row-text"><span class="row-title">${title}</span><span class="row-sub">${sub}</span></span>${icon(
+      "chevron",
+    )}</a>`;
 
   // ================================================================ 容器一覧
 
-  function containersPage() {
-    return listPage({
+  const containersPage = () =>
+    listPage({
       title: "容器一覧から選ぶ",
       placeholder: "容器コード・種類で絞り込み",
       empty: "該当する容器が見つかりません",
@@ -395,7 +344,7 @@
           rows: found.map((c) =>
             row({
               href: `#/containers/${c.code}`,
-              lead: h("span", { class: "code" }, c.code),
+              lead: html`<span class="code">${c.code}</span>`,
               title: c.vessel || c.material || "",
               sub: c.vessel && c.material,
             }),
@@ -403,19 +352,19 @@
         };
       },
     });
-  }
 
   // ================================================================ 検査項目検索
 
-  function searchPage(query) {
-    // 検索語をURLに残し、容器の画面から戻った時に検索語が消えないようにする
-    const page = listPage({
+  const searchPage = (query) =>
+    listPage({
       title: "検査項目から探す",
       placeholder: "検査項目名（例: グルコース）",
       query: new URLSearchParams(query).get("q"),
       autofocus: true,
       empty: "該当する検査項目が見つかりません",
       hint: "検査項目名の一部を入力してください",
+      // 検索語をURLに残し、容器の画面から戻った時に検索語が消えないようにする
+      onInput: (v) => history.replaceState(history.state, "", v ? `#/search?${new URLSearchParams({ q: v })}` : "#/search"),
       search(q) {
         if (!q) return { rows: [] };
         const byCode = new Map(containers().map((c) => [c.code, c]));
@@ -433,80 +382,53 @@
         };
       },
     });
-    page.input.addEventListener("input", () => {
-      const v = page.input.value;
-      history.replaceState(history.state, "", v ? `#/search?${new URLSearchParams({ q: v })}` : "#/search");
-    });
-    return page;
-  }
 
   // ================================================================ 容器詳細
 
   function containerPage(containerCode) {
-    const el = h("div", { class: "page" });
-
-    function update() {
-      const c = containers().find((x) => x.code === containerCode);
-      if (c) fill(el, toolbar(), detail(c));
-      else fill(el, toolbar(), waiting() || h("p", { class: "alert" }, `容器コード「${containerCode}」は見つかりませんでした。`));
-    }
-
-    return { el, update };
+    return {
+      html: html`<div class="page"></div>`,
+      mount(root) {
+        const page = root.firstElementChild;
+        function update() {
+          const c = containers().find((x) => x.code === containerCode);
+          page.innerHTML = show([
+            toolbar(),
+            c ? detail(c) : waiting() || html`<p class="alert">容器コード「${containerCode}」は見つかりませんでした。</p>`,
+          ]);
+        }
+        return { update };
+      },
+    };
   }
+
+  // 内線番号はタップすると電話の画面が開き、番号が入った状態になる（発信は本人が押す）
+  function extension(phs) {
+    if (!phs) return null;
+    const number = phs.replace(/[^\d+*#]/g, "");
+    if (!number) return html`<span class="fact-sub">内線 ${phs}</span>`;
+    return html`<a class="call" href="tel:${number}">${icon("phone")}内線 ${phs}<span>電話をかける</span></a>`;
+  }
+
+  const fact = (label, value, sub, size) =>
+    html`<div class="fact"><dt class="label">${label}</dt><dd${size && html` class="${size}"`}>${value}${sub}</dd></div>`;
 
   function detail(c) {
-    // 内線番号はタップすると電話の画面が開き、番号が入った状態になる（発信は本人が押す）
-    const ext = (phs) => {
-      if (!phs) return null;
-      const number = phs.replace(/[^\d+*#]/g, "");
-      if (!number) return h("span", { class: "fact-sub" }, `内線 ${phs}`);
-      // プレビュー（Claudeの画面の中）では電話の画面に移れず、プレビューが開けなくなるので発信しない
-      if (preview) {
-        const hint = h("span", {}, "電話をかける");
-        const onclick = (e) => {
-          e.preventDefault();
-          hint.textContent = "プレビューでは発信できません";
-        };
-        return h("a", { class: "call", href: `tel:${number}`, onclick }, icon("phone"), `内線 ${phs}`, hint);
-      }
-      return h("a", { class: "call", href: `tel:${number}` }, icon("phone"), `内線 ${phs}`, h("span", {}, "電話をかける"));
-    };
-    return [
-      h(
-        "header",
-        { class: "detail-head" },
-        h("p", { class: "label" }, "容器コード"),
-        h("h1", { class: "detail-code" }, c.code),
-        (c.vessel || c.material) &&
-          h("p", { class: "detail-name" }, c.vessel || c.material, c.vessel && c.material && h("span", {}, c.material)),
-      ),
-      // 写真ファイルが無い・読めない時は、壊れた画像を出さずに枠ごと消す
-      c.photo &&
-        h(
-          "figure",
-          { class: "card photo" },
-          h("img", { src: c.photo, alt: `容器コード${c.code}の写真`, onerror: (e) => e.target.parentNode.remove() }),
-        ),
-      h(
-        "dl",
-        { class: "card facts" },
-        fact("採取量", c.amount || "規定なし", null, "big"),
-        fact("払い出し場所", c.dispense || "未設定", ext(c.dispensePhs), "big"),
-        (c.inquiry || c.inquiryPhs) && fact("検査問い合わせ先", c.inquiry || "", ext(c.inquiryPhs)),
-      ),
+    return html`<header class="detail-head"><p class="label">容器コード</p><h1 class="detail-code">${c.code}</h1>${
+      (c.vessel || c.material) &&
+      html`<p class="detail-name">${c.vessel || c.material}${c.vessel && c.material && html`<span>${c.material}</span>`}</p>`
+    }</header>${
+      // 写真ファイルが無い・読めない時は、壊れた画像を出さずに枠ごと消す（下の error の処理）
+      c.photo && html`<figure class="card photo"><img src="${c.photo}" alt="容器コード${c.code}の写真"></figure>`
+    }<dl class="card facts">${fact("採取量", c.amount || "規定なし", null, "big")}${fact(
+      "払い出し場所",
+      c.dispense || "未設定",
+      extension(c.dispensePhs),
+      "big",
+    )}${(c.inquiry || c.inquiryPhs) && fact("検査問い合わせ先", c.inquiry || "", extension(c.inquiryPhs))}</dl>${
       c.instructions.length > 0 &&
-        h(
-          "section",
-          { class: "note gold" },
-          h("h2", {}, icon("tag"), "指示ラベル"),
-          h("ul", {}, c.instructions.map((s) => h("li", {}, s))),
-        ),
-      c.notes && h("section", { class: "note" }, h("h2", {}, icon("info"), "注意事項"), h("p", {}, c.notes)),
-    ];
-  }
-
-  function fact(label, value, sub, size) {
-    return h("div", { class: "fact" }, h("dt", { class: "label" }, label), h("dd", { class: size }, value, sub));
+      html`<section class="note gold"><h2>${icon("tag")}指示ラベル</h2><ul>${c.instructions.map((s) => html`<li>${s}</li>`)}</ul></section>`
+    }${c.notes && html`<section class="note"><h2>${icon("info")}注意事項</h2><p>${c.notes}</p></section>`}`;
   }
 
   // ================================================================ バーコード
@@ -527,7 +449,8 @@
   function loadZxing() {
     if (window.ZXingBrowser) return Promise.resolve(window.ZXingBrowser);
     return new Promise((resolve, reject) => {
-      const script = h("script", { src: ZXING_JS });
+      const script = document.createElement("script");
+      script.src = ZXING_JS;
       script.onload = () => resolve(window.ZXingBrowser);
       script.onerror = () => reject(new Error("バーコードの読み取り部品（vendor フォルダ）を読み込めませんでした。"));
       document.head.append(script);
@@ -535,23 +458,31 @@
   }
 
   function barcodeScanner() {
+    return {
+      // 狭い画面でも言葉の途中で改行しないよう、案内文は文節で区切る
+      html: html`<section class="card scan"><header class="scan-head">${tile("menu-scan.png")}<div><h1>バーコードから検索</h1><p><span>検査ラベルのバーコードを</span><span>カメラで読み取ってください</span></p></div></header>
+        <div class="viewport"><video muted playsinline></video><div class="guide"></div><span class="status">カメラを起動中</span><button type="button" class="torch" hidden>${icon(
+          "light",
+        )}<span>ライト</span></button></div><div class="camera-off" hidden></div><p class="scan-note" hidden></p>
+        <form class="manual"><label for="label-digits">カメラがうまく読み取れない場合は、検査ラベルの11桁の数字を直接入力してください。</label><div class="input-group"><input id="label-digits" type="text" inputmode="numeric" autocomplete="off" placeholder="例: 00000000121"><button type="submit">検索</button></div><p class="field-error" hidden></p></form></section>`,
+      mount: startScanner,
+    };
+  }
+
+  function startScanner(root) {
+    const $ = (selector) => root.querySelector(selector);
+    const view = $(".viewport");
+    const video = $("video");
+    const status = $(".status");
+    const torch = $(".torch");
+    const note = $(".scan-note");
     let stopped = false;
     let done = false;
     let track = null; // ブラウザ内蔵の読み取りで使っているカメラ
     let zxing = null; // ZXingで読み取っている時の操作口
     let torchOn = false;
     const stops = [];
-
-    const video = h("video", { muted: true, playsinline: true, onclick: focusAt });
     video.muted = true;
-    const status = h("span", { class: "status" }, "カメラを起動中");
-    const torchText = h("span", {}, "ライト");
-    const torch = h("button", { type: "button", class: "torch", hidden: true, onclick: toggleTorch }, icon("light"), torchText);
-    const view = h("div", { class: "viewport" }, video, h("div", { class: "guide" }), status, torch);
-    const off = h("div", { class: "camera-off", hidden: true });
-    const note = h("p", { class: "scan-note", hidden: true });
-    const input = h("input", { id: "label-digits", type: "text", inputmode: "numeric", autocomplete: "off", placeholder: "例: 00000000121" });
-    const error = h("p", { class: "field-error", hidden: true });
 
     function stop() {
       stopped = true;
@@ -567,7 +498,7 @@
       if (stopped || done) return;
       const found = codeFromBarcode(raw);
       if (!found) {
-        fill(note, "読み取った内容 ", h("span", {}, raw), h("br"), "12桁の数字として認識できなかったため、容器コードへ変換できませんでした。");
+        note.innerHTML = show(html`読み取った内容 <span>${raw}</span><br>12桁の数字として認識できなかったため、容器コードへ変換できませんでした。`);
         note.hidden = false;
         return;
       }
@@ -652,26 +583,26 @@
       else if (zxing && zxing.streamVideoConstraintsApply) await zxing.streamVideoConstraintsApply({ advanced: [constraint] });
     }
 
-    async function toggleTorch() {
+    torch.addEventListener("click", async () => {
       const next = !torchOn;
       try {
         if (track) await constrain({ torch: next });
         else if (zxing && zxing.switchTorch) await zxing.switchTorch(next);
         torchOn = next;
         torch.classList.toggle("on", next);
-        torchText.textContent = next ? "ライトを消す" : "ライト";
+        torch.lastElementChild.textContent = next ? "ライトを消す" : "ライト";
       } catch {
         // 非対応の端末では何もしない
       }
-    }
+    });
 
     // タップした位置にピントを合わせる（主にAndroid。iPhoneのSafariでは効果はないがエラーにもならない）
-    function focusAt(e) {
+    video.addEventListener("click", (e) => {
       const rect = video.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const ring = h("div", { class: "focus-ring", style: `left:${x}px;top:${y}px` });
-      view.append(ring);
+      view.insertAdjacentHTML("beforeend", `<div class="focus-ring" style="left:${x}px;top:${y}px"></div>`);
+      const ring = view.lastElementChild;
       setTimeout(() => ring.remove(), 700);
 
       // 映像は枠いっぱいに拡大（object-fit: cover）しているので、カメラ映像上の位置に直す
@@ -686,15 +617,16 @@
       constrain({ pointsOfInterest: [point], focusMode: "single-shot" })
         .then(() => setTimeout(() => constrain({ focusMode: "continuous" }).catch(() => {}), 1200))
         .catch(() => {});
-    }
+    });
 
-    function submit(e) {
+    $(".manual").addEventListener("submit", (e) => {
       e.preventDefault();
-      const found = codeFromDigits(input.value);
+      const found = codeFromDigits($("#label-digits").value);
+      const error = $(".field-error");
       error.hidden = Boolean(found);
       if (found) location.hash = `/containers/${found}`;
       else error.textContent = "11桁の数字で入力してください（検査ラベルに印字されている数字をそのまま）";
-    }
+    });
 
     startNative()
       .then((started) => started || stopped || startZxing())
@@ -708,40 +640,34 @@
             : e instanceof Error
               ? e.message
               : "カメラを起動できませんでした。カメラの利用を許可してください。";
-        fill(off, icon("cameraOff"), h("div", {}, h("strong", {}, "カメラを利用できません"), reason));
+        const off = $(".camera-off");
+        off.innerHTML = show(html`${icon("cameraOff")}<div><strong>カメラを利用できません</strong>${reason}</div>`);
         off.hidden = false;
       });
 
-    return {
-      el: h(
-        "section",
-        { class: "card scan" },
-        h(
-          "header",
-          { class: "scan-head" },
-          tile("menu-scan.png"),
-          h(
-            "div",
-            {},
-            h("h1", {}, "バーコードから検索"),
-            // 狭い画面でも言葉の途中で改行しないよう、文節で区切る
-            h("p", {}, h("span", {}, "検査ラベルのバーコードを"), h("span", {}, "カメラで読み取ってください")),
-          ),
-        ),
-        view,
-        off,
-        note,
-        h(
-          "form",
-          { class: "manual", onsubmit: submit },
-          h("label", { for: "label-digits" }, "カメラがうまく読み取れない場合は、検査ラベルの11桁の数字を直接入力してください。"),
-          h("div", { class: "input-group" }, input, h("button", { type: "submit" }, "検索")),
-          error,
-        ),
-      ),
-      destroy: stop,
-    };
+    return { destroy: stop };
   }
+
+  // ================================================================ 画面全体で受ける操作
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-back]")) history.back();
+    // プレビュー（Claudeの画面の中）では電話の画面に移れず、プレビューが開けなくなるので発信しない
+    const call = preview && e.target.closest(".call");
+    if (call) {
+      e.preventDefault();
+      call.lastElementChild.textContent = "プレビューでは発信できません";
+    }
+  });
+
+  // 容器写真が読めない時は枠ごと消す（error は泡立たないので、捕まえる段階で受ける）
+  document.addEventListener(
+    "error",
+    (e) => {
+      if (e.target.matches && e.target.matches(".photo img")) e.target.parentNode.remove();
+    },
+    true,
+  );
 
   // ================================================================ 画面の切り替え
 
@@ -751,7 +677,7 @@
     if (path === "/search") return searchPage(query);
     const m = path.match(/^\/containers\/([^/]+)$/);
     if (m) return containerPage(decodeURIComponent(m[1]));
-    return { el: h("div", { class: "page" }, toolbar(), h("p", { class: "state" }, "ページが見つかりません。")) };
+    return { html: html`<div class="page">${toolbar()}<p class="state">ページが見つかりません。</p></div>` };
   }
 
   const main = document.getElementById("main");
@@ -765,8 +691,9 @@
 
     // 画面ごとに作り直す（カメラのある画面を離れるとカメラも止まる）
     if (current.destroy) current.destroy();
-    current = pageFor(path || "/", query);
-    main.replaceChildren(current.el);
+    const page = pageFor(path || "/", query);
+    main.innerHTML = page.html.html;
+    current = page.mount ? page.mount(main) : {};
     loadOnce();
     if (current.update) current.update();
     const autofocus = main.querySelector("[autofocus]");
