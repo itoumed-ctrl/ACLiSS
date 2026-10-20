@@ -127,6 +127,65 @@ function drawSamplePhoto(code, { kind, cap }) {
   </svg>`;
 }
 
+// ログ集計ダッシュボードの確認用プレビュー。架空の1か月分のログを埋め込む（毎回同じ内容になるよう乱数は固定）
+async function buildLogPreview() {
+  const names = await readFile(path.join(here, "preview/containers.csv"), "utf8");
+  const sample = JSON.stringify({ log: sampleLog(), names }).replace(/</g, "\\u003c");
+  const page = (await readFile(path.join(here, "log-summary.html"), "utf8")).replace(
+    "    <script>\n",
+    () => `    <script>window.__ACLISS_LOG_SAMPLE__ = ${sample};</script>\n    <script>\n`,
+  );
+  await writeFile(path.join(root, "intranet-preview", "log-dashboard-preview.html"), page);
+  console.log("intranet-preview/log-dashboard-preview.html を作成しました");
+}
+
+function sampleLog() {
+  let seed = 20261020;
+  const rand = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const pick = (weights) => {
+    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    let r = rand() * total;
+    for (const [k, w] of Object.entries(weights)) if ((r -= w) < 0) return k;
+    return Object.keys(weights).at(-1);
+  };
+  // 採血の多い早朝と日中に山がある時間帯の重み（日本時間）
+  const hours = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 2, 5: 6, 6: 14, 7: 10, 8: 6, 9: 12, 10: 12, 11: 9, 12: 4, 13: 9, 14: 10, 15: 9, 16: 6, 17: 4, 18: 3, 19: 4, 20: 5, 21: 3, 22: 2, 23: 1 };
+  const codes = { "001": 30, "002": 25, "003": 12, "004": 10, "005": 9, "006": 6, "007": 5, "008": 3 };
+  const via = { scan: 58, digits: 14, list: 10, search: 13, direct: 5 };
+  const ua = "Mozilla/5.0+(Linux;+Android+14)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/129.0+Mobile+Safari/537.36";
+  const rows = [];
+  const add = (jst, query) => {
+    const utc = new Date(jst.getTime() - 9 * 3600e3).toISOString();
+    const ip = `10.1.2.${10 + Math.floor(rand() * 50)}`;
+    rows.push([utc, `${utc.slice(0, 10)} ${utc.slice(11, 19)} 10.1.0.5 GET /acliss/log.gif ${query} 443 - ${ip} ${ua} - 200 0 0 2`]);
+  };
+  for (let d = 0; d < 30; d++) {
+    const day = new Date(Date.UTC(2026, 8, 21 + d));
+    const weekend = [0, 6].includes(day.getUTCDay());
+    const sessions = Math.round((weekend ? 9 : 24) * (0.8 + rand() * 0.4));
+    for (let s = 0; s < sessions; s++) {
+      const at = new Date(day.getTime() + Number(pick(hours)) * 3600e3 + Math.floor(rand() * 3600) * 1e3);
+      add(at, `e=open&t=${at.getTime()}`);
+      if (rand() < 0.04) add(new Date(at.getTime() + 2e3), `e=camera&reason=${pick({ denied: 3, nodevice: 1, https: 1 })}`);
+      const views = 1 + Math.floor(rand() * 2.4);
+      for (let v = 0; v < views; v++) {
+        const t = new Date(at.getTime() + (v + 1) * 40e3);
+        if (rand() < 0.03) add(t, `e=notfound&code=${pick({ 485: 3, "099": 1 })}&via=${pick({ scan: 2, search: 1 })}`);
+        else add(t, `e=view&code=${pick(codes)}&via=${pick(via)}`);
+      }
+    }
+  }
+  rows.sort((a, b) => a[0].localeCompare(b[0]));
+  const head = "#Software: Microsoft Internet Information Services 10.0\n#Version: 1.0\n#Fields: date time s-ip cs-method cs-uri-stem cs-uri-query s-port cs-username c-ip cs(User-Agent) cs(Referer) sc-status sc-substatus sc-win32-status time-taken\n";
+  return head + rows.map((r) => r[1]).join("\n") + "\n";
+}
+
 if (process.argv.includes("--preview")) {
   await buildPreview();
+  await buildLogPreview();
 }

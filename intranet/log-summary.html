@@ -2,18 +2,55 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ACLiSS ログ集計</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <title>ACLiSS 利用ダッシュボード</title>
     <style>
-      /* ACLiSS の利用記録（Webサーバーのアクセスログに残った log.gif の行）を集計する道具。
-         院内サーバーには置かず、ログを見る人のPCでダブルクリックして開く。ファイルは外へ送らない。 */
+      /* ACLiSS の利用記録（Webサーバーのアクセスログに残った log.gif の行）を集計するダッシュボード。
+         院内サーバーには置かず、ログを見る人のPCでダブルクリックして開く。ファイルは外へ送らない。
+         レイアウト: 紺の帯 → 読み込み欄 → 数字のタイル → グラフ4つ（広い画面は2列）→ 詳しい表 */
       :root {
         --navy: #203863;
         --gold: #ffc000;
+        --bg: #f4f6f9;
+        --surface: #ffffff;
         --ink: #161b26;
+        --ink-2: #4b5466;
         --ink-3: #7c8597;
         --line: #e2e6ed;
-        --bg: #f4f6f9;
+        --tint: #eef1f7;
+        --bar: #2f4d85;
+        --bar-hover: #203863;
+        --warn: #9a5b00;
+        --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, "Noto Sans JP", sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #11151d;
+          --surface: #1a2029;
+          --ink: #e8ebf1;
+          --ink-2: #b4bccb;
+          --ink-3: #8a93a5;
+          --line: #2b3340;
+          --tint: #232c3b;
+          --bar: #7d9bd6;
+          --bar-hover: #a9c0ee;
+          --warn: #f0b45a;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #11151d;
+        --surface: #1a2029;
+        --ink: #e8ebf1;
+        --ink-2: #b4bccb;
+        --ink-3: #8a93a5;
+        --line: #2b3340;
+        --tint: #232c3b;
+        --bar: #7d9bd6;
+        --bar-hover: #a9c0ee;
+        --warn: #f0b45a;
+        color-scheme: dark;
       }
       * {
         box-sizing: border-box;
@@ -22,125 +59,402 @@
         margin: 0;
         background: var(--bg);
         color: var(--ink);
-        font: 15px/1.5 -apple-system, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+        font: 15px/1.5 var(--font);
+        -webkit-font-smoothing: antialiased;
       }
-      header {
-        padding: 14px 24px;
-        background: var(--navy);
+      [hidden] {
+        display: none !important;
+      }
+      .band {
+        background: #203863;
         color: #fff;
+        border-bottom: 3px solid var(--gold);
+        padding-block: 14px;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+      }
+      .band-inner {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      .band strong {
         font-size: 18px;
         font-weight: 800;
-        border-bottom: 3px solid var(--gold);
+        letter-spacing: 0.03em;
+      }
+      .band span {
+        font-size: 13px;
+        color: rgb(255 255 255 / 0.75);
       }
       main {
-        max-width: 960px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        max-width: 1040px;
         margin: 0 auto;
-        padding: 20px 24px 48px;
+        padding-block: 20px 48px;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
       }
-      .drop {
-        display: block;
-        padding: 28px;
-        border: 2px dashed #b9c2d3;
+      #result {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .card {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
         border-radius: 12px;
-        background: #fff;
-        text-align: center;
+        background: var(--surface);
+      }
+      h2 {
+        margin: 0 0 2px;
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--ink);
+        text-wrap: balance;
+      }
+      .sub {
+        margin: 0 0 14px;
+        font-size: 12.5px;
+        color: var(--ink-3);
+      }
+
+      /* 読み込み欄 */
+      .drop {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        padding: 14px 16px;
+        border: 2px dashed var(--line);
+        border-radius: 12px;
+        background: var(--surface);
         cursor: pointer;
       }
       .drop.over {
-        border-color: var(--navy);
-        background: #eef1f7;
+        border-color: var(--bar);
+        background: var(--tint);
       }
       .drop input {
         display: none;
       }
-      .hint {
-        margin: 8px 0 0;
-        color: var(--ink-3);
-        font-size: 13px;
+      .drop strong {
+        color: var(--ink);
       }
-      .stats {
+      .drop small {
+        flex: 1 1 320px;
+        color: var(--ink-3);
+        font-size: 12.5px;
+      }
+      .pill {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: var(--tint);
+        color: var(--ink-2);
+        font-size: 12.5px;
+        font-weight: 700;
+      }
+      .pill.sample {
+        background: var(--gold);
+        color: #203863;
+      }
+
+      /* 数字のタイル */
+      .tiles {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 12px;
-        margin: 20px 0;
       }
-      .stat {
+      .tile {
         padding: 12px 14px;
         border: 1px solid var(--line);
         border-radius: 12px;
-        background: #fff;
+        background: var(--surface);
       }
-      .stat p {
+      .tile p {
         margin: 0;
+        font-size: 12.5px;
         color: var(--ink-3);
+      }
+      .tile strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.2;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+      .tile strong small {
+        margin-left: 2px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ink-3);
+      }
+      .tile.alert strong {
+        color: var(--warn);
+      }
+      .tile .period {
+        font-size: 15px;
+        line-height: 1.35;
+      }
+
+      /* グラフ */
+      .charts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .charts .wide {
+        grid-column: 1 / -1;
+      }
+      @media (max-width: 760px) {
+        .charts {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      /* 縦棒（日別・時間帯別）。目盛りの線は控えめ、棒は1色 */
+      .vchart {
+        position: relative;
+        height: 180px;
+        margin-left: 34px;
+      }
+      .grid-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid var(--line);
+      }
+      .grid-line span {
+        position: absolute;
+        right: calc(100% + 6px);
+        top: -8px;
+        font-size: 11px;
+        color: var(--ink-3);
+        font-variant-numeric: tabular-nums;
+      }
+      .bars {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        align-items: end;
+        gap: 2px;
+      }
+      .bars > div {
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        cursor: default;
+      }
+      .bars i {
+        display: block;
+        width: 100%;
+        min-height: 1px;
+        border-radius: 4px 4px 0 0;
+        background: var(--bar);
+      }
+      .bars > div:hover i,
+      .bars > div:focus i {
+        background: var(--bar-hover);
+      }
+      .xlabels {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        gap: 2px;
+        margin: 6px 0 0 34px;
+        font-size: 11px;
+        color: var(--ink-3);
+        font-variant-numeric: tabular-nums;
+      }
+      .xlabels span {
+        overflow: visible;
+        white-space: nowrap;
+        text-align: center;
+      }
+      /* 横棒（開いた方法・よく開かれた容器） */
+      .hbars {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .hbar {
+        display: grid;
+        grid-template-columns: minmax(0, 9.5rem) minmax(0, 1fr) 4.5rem;
+        align-items: center;
+        gap: 10px;
         font-size: 13px;
       }
-      .stat strong {
-        font-size: 24px;
-        color: var(--navy);
+      .wide .hbar {
+        grid-template-columns: minmax(0, 18rem) minmax(0, 1fr) 4.5rem;
       }
-      h2 {
-        margin: 28px 0 8px;
-        font-size: 16px;
-        color: var(--navy);
+      @media (max-width: 760px) {
+        .wide .hbar {
+          grid-template-columns: minmax(0, 9.5rem) minmax(0, 1fr) 4.5rem;
+        }
+      }
+      .hbar .name {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--ink-2);
+      }
+      .hbar .name b {
+        margin-right: 6px;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+      .hbar .track {
+        height: 14px;
+      }
+      .hbar .track i {
+        display: block;
+        height: 100%;
+        min-width: 2px;
+        border-radius: 0 4px 4px 0;
+        background: var(--bar);
+      }
+      .hbar:hover .track i {
+        background: var(--bar-hover);
+      }
+      .hbar .val {
+        text-align: right;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+      .hbar .val small {
+        margin-left: 4px;
+        color: var(--ink-3);
+      }
+      .tip {
+        position: fixed;
+        z-index: 20;
+        pointer-events: none;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: var(--ink);
+        color: var(--surface);
+        font-size: 12.5px;
+        line-height: 1.4;
+        white-space: nowrap;
+        transform: translate(-50%, calc(-100% - 10px));
+      }
+
+      /* 表 */
+      .tables {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+      @media (max-width: 760px) {
+        .tables {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .scroll {
+        overflow-x: auto;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        background: #fff;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        overflow: hidden;
+        font-size: 13px;
       }
       th,
       td {
-        padding: 6px 10px;
+        padding: 6px 8px;
         border-bottom: 1px solid var(--line);
         text-align: left;
+        white-space: nowrap;
       }
       th {
-        background: #eef1f7;
-        font-size: 13px;
+        color: var(--ink-3);
+        font-size: 12px;
+        font-weight: 700;
       }
       td.n,
       th.n {
         text-align: right;
         font-variant-numeric: tabular-nums;
       }
+      .empty {
+        margin: 0;
+        color: var(--ink-3);
+        font-size: 13px;
+      }
+      details summary {
+        cursor: pointer;
+        font-weight: 800;
+      }
+      details[open] summary {
+        margin-bottom: 12px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
       button {
-        padding: 8px 16px;
+        padding: 9px 16px;
         border: 0;
         border-radius: 8px;
-        background: var(--navy);
+        background: #203863;
         color: #fff;
         font: inherit;
         font-weight: 700;
         cursor: pointer;
       }
-      .empty {
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      button:focus-visible,
+      .bars > div:focus-visible {
+        outline: 3px solid var(--gold);
+        outline-offset: 2px;
+      }
+      .note {
         color: var(--ink-3);
+        font-size: 12.5px;
       }
     </style>
   </head>
   <body>
-    <header>ACLiSS ログ集計</header>
+    <header class="band">
+      <div class="band-inner"><strong>ACLiSS</strong><span>利用ダッシュボード</span></div>
+    </header>
     <main>
       <label class="drop" id="drop">
         <input type="file" id="files" multiple />
-        <strong>Webサーバーのログファイルをここにドロップ（またはクリックして選択）</strong>
-        <p class="hint">
-          IISのログ（例: C:\inetpub\logs\LogFiles\W3SVC1\u_ex261020.log）。複数まとめて選べます。<br />
-          一緒に master の containers.csv も選ぶと、容器コードの横に容器名を出します。ファイルはこのPCの中だけで読み、どこにも送りません。
-        </p>
+        <strong>ログファイルを選ぶ（ドロップでも可）</strong>
+        <small>
+          IISのログ（例: C:\inetpub\logs\LogFiles\W3SVC1\u_ex261020.log）を複数まとめて選べます。master の containers.csv も一緒に選ぶと容器名が出ます。ファイルはこのPCの中だけで読み、どこにも送りません。
+        </small>
+        <span class="pill" id="source">まだ読み込んでいません</span>
       </label>
-      <div id="result"></div>
+      <div id="result">
+        <div class="card"><p class="empty">ログファイルを選ぶと、ここに利用状況が出ます。</p></div>
+      </div>
     </main>
+    <div class="tip" id="tip" hidden></div>
     <script>
       (function () {
         "use strict";
 
+        // 開発確認用のプレビューでは、架空のサンプルログが埋め込まれている
+        const sample = window.__ACLISS_LOG_SAMPLE__;
+
         const EVENTS = { open: "アプリを開いた", view: "容器を開いた", notfound: "見つからない容器コード", camera: "カメラが使えなかった", "master-error": "マスタを読めなかった" };
-        const VIA = { scan: "バーコード", digits: "手入力", list: "一覧", search: "検査項目検索", direct: "その他（URL・戻る）" };
+        const VIA = { scan: "バーコード", digits: "手入力", list: "容器一覧", search: "検査項目検索", direct: "URL・戻る" };
+        const VIA_ORDER = ["scan", "digits", "list", "search", "direct"];
         const REASON = { https: "HTTPSで開いていない", denied: "カメラの利用を許可していない", nodevice: "カメラが見つからない", other: "その他" };
 
         const esc = (v) => String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -168,9 +482,8 @@
             const row = Object.fromEntries(fields.map((f, i) => [f, cols[i]]));
             if (!row["cs-uri-stem"] || !/\/log\.gif$/i.test(row["cs-uri-stem"])) continue;
             const q = new URLSearchParams(row["cs-uri-query"] === "-" ? "" : row["cs-uri-query"]);
-            const at = new Date(`${row.date}T${row.time}Z`);
             events.push({
-              at,
+              at: new Date(`${row.date}T${row.time}Z`),
               ip: row["c-ip"] || "",
               event: q.get("e") || "",
               code: q.get("code") || "",
@@ -218,20 +531,69 @@
           return names;
         }
 
-        const day = (d) => d.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tokyo" });
+        // 日本時間での日付・時・表示
+        const jst = (d) => new Date(d.getTime() + 9 * 3600e3);
+        const dayKey = (d) => jst(d).toISOString().slice(0, 10);
+        const hourOf = (d) => jst(d).getUTCHours();
+        const shortDay = (key) => `${Number(key.slice(5, 7))}/${Number(key.slice(8))}`;
+        const longDay = (key) => `${key.slice(0, 4)}/${key.slice(5, 7)}/${key.slice(8)}`;
+        const weekday = (key) => "日月火水木金土"[new Date(`${key}T00:00:00Z`).getUTCDay()];
         const stamp = (d) => d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
         const count = (list, key) => list.reduce((m, x) => ((m[key(x)] = (m[key(x)] || 0) + 1), m), {});
+
+        // 目盛りはきりのよい数（1・2・5の10の累乗倍）で、最大値を少し超えるところまで
+        function niceMax(max) {
+          if (max <= 4) return 4;
+          const raw = max / 4;
+          const p = 10 ** Math.floor(Math.log10(raw));
+          const step = [1, 2, 5, 10].map((m) => m * p).find((s) => s >= raw);
+          return step * 4;
+        }
+
+        function vchart(items, labelEvery) {
+          const top = niceMax(Math.max(...items.map((x) => x.value)));
+          const ticks = [0, 1, 2, 3, 4].map((i) => (top / 4) * i);
+          return `<div class="vchart">${ticks
+            .map((t) => `<div class="grid-line" style="bottom:${(t / top) * 100}%"><span>${t}</span></div>`)
+            .join("")}<div class="bars">${items
+            .map(
+              (x) =>
+                `<div tabindex="0" data-tip="${esc(x.tip)}" aria-label="${esc(x.tip)}"><i style="height:${(x.value / top) * 100}%"></i></div>`,
+            )
+            .join("")}</div></div><div class="xlabels">${items
+            .map((x, i) => `<span>${i % labelEvery === 0 ? esc(x.label) : ""}</span>`)
+            .join("")}</div>`;
+        }
+
+        function hbars(items) {
+          const top = Math.max(1, ...items.map((x) => x.value));
+          return `<div class="hbars">${items
+            .map(
+              (x) =>
+                `<div class="hbar" data-tip="${esc(x.tip)}"><span class="name" title="${esc(x.title || "")}">${x.name}</span><span class="track"><i style="width:${(x.value / top) * 100}%"></i></span><span class="val">${x.value}${
+                  x.share != null ? `<small>${x.share}%</small>` : ""
+                }</span></div>`,
+            )
+            .join("")}</div>`;
+        }
+
         const table = (head, rows) =>
           rows.length === 0
             ? `<p class="empty">記録はありません</p>`
-            : `<table><tr>${head.map((h) => `<th class="${h.n ? "n" : ""}">${esc(h.t)}</th>`).join("")}</tr>${rows
+            : `<div class="scroll"><table><tr>${head.map((h) => `<th class="${h.n ? "n" : ""}">${esc(h.t)}</th>`).join("")}</tr>${rows
                 .map((r) => `<tr>${r.map((c, i) => `<td class="${head[i].n ? "n" : ""}">${esc(c)}</td>`).join("")}</tr>`)
-                .join("")}</table>`;
+                .join("")}</table></div>`;
 
-        function render(events, names) {
+        let current = { events: [], names: null };
+
+        function render(events, names, sourceLabel) {
+          current = { events, names };
+          const source = document.getElementById("source");
+          source.textContent = sourceLabel;
+          source.classList.toggle("sample", Boolean(sample) && sourceLabel.startsWith("サンプル"));
           const result = document.getElementById("result");
           if (events.length === 0) {
-            result.innerHTML = `<p class="hint">ACLiSSの記録（log.gif の行）が見つかりませんでした。ACLiSSを置いたサイトのログファイルか確認してください。</p>`;
+            result.innerHTML = `<div class="card"><p class="empty">ACLiSSの記録（log.gif の行）が見つかりませんでした。ACLiSSを置いたサイトのログファイルか確認してください。</p></div>`;
             return;
           }
           events.sort((a, b) => a.at - b.at);
@@ -239,67 +601,136 @@
           const views = by("view"), missing = by("notfound"), cams = by("camera"), opens = by("open");
           const name = (code) => (names && names[code]) || "";
 
-          const days = Object.entries(count(events, (e) => day(e.at))).map(([d]) => [
-            d,
-            events.filter((e) => day(e.at) === d && e.event === "open").length,
-            events.filter((e) => day(e.at) === d && e.event === "view").length,
-          ]);
-          const perCode = Object.entries(count(views, (e) => e.code))
-            .sort((a, b) => b[1] - a[1])
-            .map(([code, n]) => {
-              const v = count(views.filter((e) => e.code === code), (e) => e.via);
-              return [code, name(code), n, v.scan || 0, v.digits || 0, v.list || 0, v.search || 0, v.direct || 0];
-            });
-          const viaTotal = Object.entries(count(views, (e) => e.via)).map(([k, n]) => [VIA[k] || k, n, `${Math.round((n / views.length) * 100)}%`]);
+          // 期間の全日（記録のない日も0として並べる）
+          const first = dayKey(events[0].at), last = dayKey(events.at(-1).at);
+          const days = [];
+          for (let t = Date.parse(first); t <= Date.parse(last); t += 864e5) days.push(new Date(t).toISOString().slice(0, 10));
+          const viewsByDay = count(views, (e) => dayKey(e.at));
+          const opensByDay = count(opens, (e) => dayKey(e.at));
+          const viewsByHour = count(views, (e) => hourOf(e.at));
+          const viaCount = count(views, (e) => e.via);
+          const perCode = Object.entries(count(views, (e) => e.code)).sort((a, b) => b[1] - a[1]);
+
+          const daily = days.map((d) => ({
+            label: shortDay(d),
+            value: viewsByDay[d] || 0,
+            tip: `${longDay(d)}（${weekday(d)}）容器を開いた ${viewsByDay[d] || 0}回・アプリを開いた ${opensByDay[d] || 0}回`,
+          }));
+          const hourly = Array.from({ length: 24 }, (_, h) => ({
+            label: `${h}`,
+            value: viewsByHour[h] || 0,
+            tip: `${h}時台 容器を開いた ${viewsByHour[h] || 0}回`,
+          }));
+          const viaItems = VIA_ORDER.filter((k) => viaCount[k]).map((k) => ({
+            name: esc(VIA[k]),
+            value: viaCount[k],
+            share: Math.round((viaCount[k] / views.length) * 100),
+            tip: `${VIA[k]} ${viaCount[k]}回（${Math.round((viaCount[k] / views.length) * 100)}%）`,
+          }));
+          const topItems = perCode.slice(0, 10).map(([code, n]) => ({
+            name: `<b>${esc(code)}</b>${esc(name(code))}`,
+            title: name(code),
+            value: n,
+            tip: `${code}${name(code) ? " " + name(code) : ""} ${n}回`,
+          }));
+          const dayCount = days.length;
+          const perDay = (views.length / dayCount).toFixed(1);
+
           const missingRows = Object.entries(count(missing, (e) => e.code))
             .sort((a, b) => b[1] - a[1])
             .map(([code, n]) => [code, n, [...new Set(missing.filter((e) => e.code === code).map((e) => VIA[e.via] || e.via))].join("・")]);
-          const camRows = Object.entries(count(cams, (e) => e.reason)).map(([k, n]) => [REASON[k] || k, n]);
+          const camRows = Object.entries(count(cams, (e) => e.reason))
+            .sort((a, b) => b[1] - a[1])
+            .map(([k, n]) => [REASON[k] || k, n]);
+          const allRows = perCode.map(([code, n]) => {
+            const v = count(views.filter((e) => e.code === code), (e) => e.via);
+            return [code, name(code), n, ...VIA_ORDER.map((k) => v[k] || 0)];
+          });
 
           result.innerHTML = `
-            <div class="stats">
-              <div class="stat"><p>期間（日本時間）</p><strong style="font-size:15px">${esc(day(events[0].at))} 〜 ${esc(day(events.at(-1).at))}</strong></div>
-              <div class="stat"><p>アプリを開いた</p><strong>${opens.length}</strong></div>
-              <div class="stat"><p>容器を開いた</p><strong>${views.length}</strong></div>
-              <div class="stat"><p>見つからない容器コード</p><strong>${missing.length}</strong></div>
-              <div class="stat"><p>カメラが使えなかった</p><strong>${cams.length}</strong></div>
+            <div class="tiles">
+              <div class="tile"><p>期間（日本時間）</p><strong class="period">${esc(longDay(first))}<br>〜 ${esc(longDay(last))}</strong></div>
+              <div class="tile"><p>容器を開いた</p><strong>${views.length}<small>回</small></strong></div>
+              <div class="tile"><p>1日あたり</p><strong>${perDay}<small>回</small></strong></div>
+              <div class="tile"><p>アプリを開いた</p><strong>${opens.length}<small>回</small></strong></div>
+              <div class="tile${missing.length ? " alert" : ""}"><p>見つからない容器コード</p><strong>${missing.length}<small>回</small></strong></div>
+              <div class="tile${cams.length ? " alert" : ""}"><p>カメラが使えなかった</p><strong>${cams.length}<small>回</small></strong></div>
             </div>
-            <p><button type="button" id="csv">記録をCSVで保存（Excel用）</button></p>
-            <h2>日別</h2>${table([{ t: "日付" }, { t: "アプリを開いた", n: 1 }, { t: "容器を開いた", n: 1 }], days)}
-            <h2>容器を開いた方法</h2>${table([{ t: "方法" }, { t: "回数", n: 1 }, { t: "割合", n: 1 }], viaTotal)}
-            <h2>容器別（多い順）</h2>${table(
-              [{ t: "容器コード" }, { t: "容器名" }, { t: "合計", n: 1 }, { t: "バーコード", n: 1 }, { t: "手入力", n: 1 }, { t: "一覧", n: 1 }, { t: "検査項目検索", n: 1 }, { t: "その他", n: 1 }],
-              perCode,
-            )}
-            <h2>見つからなかった容器コード（マスタの登録漏れの確認に）</h2>${table([{ t: "容器コード" }, { t: "回数", n: 1 }, { t: "開いた方法" }], missingRows)}
-            <h2>カメラが使えなかった理由</h2>${table([{ t: "理由" }, { t: "回数", n: 1 }], camRows)}`;
+            <div class="charts">
+              <section class="card wide"><h2>日別：容器を開いた回数</h2><p class="sub">棒にカーソルを合わせると、その日のアプリを開いた回数も出ます</p>${vchart(daily, Math.max(1, Math.ceil(dayCount / 6)))}</section>
+              <section class="card"><h2>時間帯別：容器を開いた回数</h2><p class="sub">日本時間、期間の合計</p>${vchart(hourly, 3)}</section>
+              <section class="card"><h2>容器を開いた方法</h2><p class="sub">バーコードの割合が低い時は、カメラやラベルの状態を確認</p>${hbars(viaItems)}</section>
+              <section class="card wide"><h2>よく開かれた容器（上位10）</h2><p class="sub">${names ? "容器名は読み込んだ containers.csv から" : "containers.csv も選ぶと容器名が出ます"}</p>${hbars(topItems)}</section>
+            </div>
+            <div class="tables">
+              <section class="card"><h2>見つからなかった容器コード</h2><p class="sub">マスタの登録漏れや、ラベルの印字違いの確認に</p>${table([{ t: "容器コード" }, { t: "回数", n: 1 }, { t: "開いた方法" }], missingRows)}</section>
+              <section class="card"><h2>カメラが使えなかった理由</h2><p class="sub">端末ごとに、アプリを開いて最初の1回だけ記録</p>${table([{ t: "理由" }, { t: "回数", n: 1 }], camRows)}</section>
+            </div>
+            <details class="card"><summary>すべての容器（表）</summary>${table(
+              [{ t: "容器コード" }, { t: "容器名" }, { t: "合計", n: 1 }, ...VIA_ORDER.map((k) => ({ t: VIA[k], n: 1 }))],
+              allRows,
+            )}</details>
+            <div class="actions"><button type="button" id="csv"${sample ? " disabled" : ""}>記録をCSVで保存（Excel用）</button>${
+              sample ? `<span class="note">プレビューでは保存できません。院内のPCで開いたこのファイルでは保存できます。</span>` : ""
+            }</div>`;
+        }
 
-          document.getElementById("csv").addEventListener("click", () => {
-            const head = ["日時（日本時間）", "端末のIPアドレス", "操作", "容器コード", "容器名", "開いた方法", "カメラの理由", "ブラウザ"];
-            const lines = events.map((e) =>
-              [stamp(e.at), e.ip, EVENTS[e.event] || e.event, e.code, name(e.code), VIA[e.via] || e.via, REASON[e.reason] || e.reason, e.agent]
-                .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-                .join(","),
-            );
-            const blob = new Blob(["\uFEFF" + [head.join(","), ...lines].join("\r\n")], { type: "text/csv" });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `acliss-log-${day(events[0].at).replace(/\//g, "")}-${day(events.at(-1).at).replace(/\//g, "")}.csv`;
-            a.click();
-          });
+        function saveCsv() {
+          const { events, names } = current;
+          const name = (code) => (names && names[code]) || "";
+          const head = ["日時（日本時間）", "端末のIPアドレス", "操作", "容器コード", "容器名", "開いた方法", "カメラの理由", "ブラウザ"];
+          const lines = events.map((e) =>
+            [stamp(e.at), e.ip, EVENTS[e.event] || e.event, e.code, name(e.code), VIA[e.via] || e.via, REASON[e.reason] || e.reason, e.agent]
+              .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+              .join(","),
+          );
+          const blob = new Blob(["\uFEFF" + [head.join(","), ...lines].join("\r\n")], { type: "text/csv" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `acliss-log-${dayKey(events[0].at).replace(/-/g, "")}-${dayKey(events.at(-1).at).replace(/-/g, "")}.csv`;
+          a.click();
         }
 
         async function load(fileList) {
           let events = [];
           let names = null;
+          let logs = 0;
           for (const file of fileList) {
             const text = decode(await file.arrayBuffer());
             if (/\.csv$/i.test(file.name)) names = parseNames(text) || names;
-            else events = events.concat(parseLog(text));
+            else {
+              events = events.concat(parseLog(text));
+              logs++;
+            }
           }
-          render(events, names);
+          render(events, names, `ログ ${logs}ファイル${names ? "・容器名あり" : ""}`);
         }
 
+        // 棒にカーソル（またはタップ・フォーカス）を合わせた時の吹き出し
+        const tip = document.getElementById("tip");
+        function showTip(target) {
+          const r = target.getBoundingClientRect();
+          tip.textContent = target.dataset.tip;
+          tip.hidden = false;
+          const half = tip.offsetWidth / 2;
+          tip.style.left = `${Math.min(Math.max(r.left + r.width / 2, half + 8), innerWidth - half - 8)}px`;
+          tip.style.top = `${r.top}px`;
+        }
+        for (const type of ["mouseover", "focusin", "click"]) {
+          document.addEventListener(type, (e) => {
+            const target = e.target.closest && e.target.closest("[data-tip]");
+            if (target) showTip(target);
+            else if (type !== "focusin") tip.hidden = true;
+          });
+        }
+        document.addEventListener("mouseout", (e) => {
+          if (e.target.closest && e.target.closest("[data-tip]") && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-tip]"))) tip.hidden = true;
+        });
+        window.addEventListener("scroll", () => (tip.hidden = true), { passive: true });
+
+        document.addEventListener("click", (e) => {
+          if (e.target.id === "csv") saveCsv();
+        });
         const drop = document.getElementById("drop");
         document.getElementById("files").addEventListener("change", (e) => load(e.target.files));
         drop.addEventListener("dragover", (e) => {
@@ -312,6 +743,8 @@
           drop.classList.remove("over");
           load(e.dataTransfer.files);
         });
+
+        if (sample) render(parseLog(sample.log), parseNames(sample.names), "サンプルデータ（架空）");
       })();
     </script>
   </body>
