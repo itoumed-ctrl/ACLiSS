@@ -107,25 +107,36 @@ button {
 
 /* ---------------------------------------------------------------- 全体 */
 
+/* ヘッダーは白地にして、白地のアイコンをそのままなじませる。下の金の線がブランドの差し色 */
 .appbar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  background: var(--navy);
-  color: #fff;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 3px solid var(--gold);
+  box-shadow: 0 1px 4px rgb(22 27 38 / 0.06);
 }
 .brand {
-  padding-left: 0.625rem;
-  border-left: 4px solid var(--gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.brand-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.brand-name {
   font-size: 1.25rem;
   font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  color: var(--navy);
 }
 .brand-sub {
-  font-size: 0.8125rem;
-  color: rgb(255 255 255 / 0.75);
+  font-size: 0.75rem;
+  color: var(--ink-2);
 }
 .page {
   display: flex;
