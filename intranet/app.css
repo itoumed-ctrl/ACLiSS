@@ -478,8 +478,9 @@ a.row:active {
   grid-template-columns: 1fr auto;
   gap: 1rem;
 }
-/* 枠は左の容器コード〜容器名と同じ高さ。下端が容器名の下の行にそろう */
+/* 枠の上端は容器コードの数字の上、下端は容器名の下の行にそろえる */
 .amount {
+  margin-top: 1.125rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
