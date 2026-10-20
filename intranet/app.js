@@ -414,14 +414,20 @@
   const fact = (label, value, sub, size) =>
     html`<div class="fact"><dt class="label">${label}</dt><dd${size && html` class="${size}"`}>${value}${sub}</dd></div>`;
 
+  // 採取量は数字を大きく、単位の mL を小さく出す。「規定なし」など言葉の時は文字を控えめにする
+  function amount(value) {
+    const m = (value || "").match(/^(.+) mL$/);
+    return m ? html`${m[1]}<small>mL</small>` : value || "規定なし";
+  }
+
   function detail(c) {
-    // 採取量は容器コードの右に並べ、番号と一緒に目に入るようにする
-    return html`<header class="detail-head"><div class="detail-top"><div><p class="label">容器コード</p><h1 class="detail-code">${
-      c.code
-    }</h1></div><div class="amount"><p class="label">採取量</p><p class="amount-value">${c.amount || "規定なし"}</p></div></div>${
+    // 採取量は容器コードの右に、容器コードから容器名の下の行までの高さの枠で並べる
+    return html`<header class="detail-head"><div><p class="label">容器コード</p><h1 class="detail-code">${c.code}</h1>${
       (c.vessel || c.material) &&
       html`<p class="detail-name">${c.vessel || c.material}${c.vessel && c.material && html`<span>${c.material}</span>`}</p>`
-    }</header>${
+    }</div><div class="amount"><p class="label">採取量</p><p class="amount-value${
+      !/ mL$/.test(c.amount || "") && html` words`
+    }">${amount(c.amount)}</p></div></header>${
       // 写真ファイルが無い・読めない時は、壊れた画像を出さずに枠ごと消す（下の error の処理）
       c.photo && html`<figure class="card photo"><img src="${c.photo}" alt="容器コード${c.code}の写真"></figure>`
     }<dl class="card facts">${fact(
