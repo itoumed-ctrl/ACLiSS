@@ -367,12 +367,10 @@
         "menu-containers.png",
         "容器一覧から選ぶ",
         "容器コードや種類から探します",
-      )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}${menuItem(
-        "#/phonebook",
-        "menu-phonebook.png",
-        "電話帳",
-        "部署名から内線番号を探します",
-      )}</nav></div>`,
+      )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav>${
+        // 電話帳は容器を調べる2つとは用途が違うので、枠を分けて間をあける
+        html`<nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "部署名から内線番号を探します")}</nav>`
+      }</div>`,
       mount: scanner.mount,
     };
   }
