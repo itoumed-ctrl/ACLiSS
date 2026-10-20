@@ -388,7 +388,7 @@
 
   function containerPage(containerCode) {
     return {
-      html: html`<div class="page"></div>`,
+      html: html`<div class="page detail"></div>`,
       mount(root) {
         const page = root.firstElementChild;
         function update() {
@@ -407,26 +407,27 @@
   function extension(phs) {
     if (!phs) return null;
     const number = phs.replace(/[^\d+*#]/g, "");
-    if (!number) return html`<span class="fact-sub">内線 ${phs}</span>`;
-    return html`<a class="call" href="tel:${number}">${icon("phone")}内線 ${phs}<span>電話をかける</span></a>`;
+    if (!number) return html`<p class="ext">内線 ${phs}</p>`;
+    return html`<a class="call" href="tel:${number}" aria-label="内線${phs}に電話をかける">${icon("phone")}<span>内線 ${phs}</span></a>`;
   }
 
-  const fact = (label, value, sub, size) =>
-    html`<div class="fact"><dt class="label">${label}</dt><dd${size && html` class="${size}"`}>${value}${sub}</dd></div>`;
+  // 払い出し場所・問い合わせ先は横に並べ、注意事項まで1画面に収める
+  const place = (label, name, phs) =>
+    html`<div class="place"><p class="label">${label}</p><p class="place-name">${name || "未設定"}</p>${extension(phs)}</div>`;
 
   function detail(c) {
-    return html`<header class="detail-head"><p class="label">容器コード</p><h1 class="detail-code">${c.code}</h1>${
+    return html`<header class="detail-head"><div><p class="label">容器コード</p><h1 class="detail-code">${c.code}</h1>${
       (c.vessel || c.material) &&
       html`<p class="detail-name">${c.vessel || c.material}${c.vessel && c.material && html`<span>${c.material}</span>`}</p>`
-    }</header>${
-      // 写真ファイルが無い・読めない時は、壊れた画像を出さずに枠ごと消す（下の error の処理）
-      c.photo && html`<figure class="card photo"><img src="${c.photo}" alt="容器コード${c.code}の写真"></figure>`
-    }<dl class="card facts">${fact("採取量", c.amount || "規定なし", null, "big")}${fact(
+    }</div>${
+      // 写真は小さく出し、タップで画面の幅いっぱいに広げる。読めない時は枠ごと消す（下の error の処理）
+      c.photo &&
+      html`<button type="button" class="thumb" data-zoom aria-label="写真を拡大"><img src="${c.photo}" alt="容器コード${c.code}の写真"></button>`
+    }</header><div class="card facts"><p class="amount"><span class="label">採取量</span><strong>${c.amount || "規定なし"}</strong></p><div class="places">${place(
       "払い出し場所",
-      c.dispense || "未設定",
-      extension(c.dispensePhs),
-      "big",
-    )}${(c.inquiry || c.inquiryPhs) && fact("検査問い合わせ先", c.inquiry || "", extension(c.inquiryPhs))}</dl>${
+      c.dispense,
+      c.dispensePhs,
+    )}${place("検査問い合わせ先", c.inquiry, c.inquiryPhs)}</div></div>${
       c.instructions.length > 0 &&
       html`<section class="note gold"><h2>${icon("tag")}指示ラベル</h2><ul>${c.instructions.map((s) => html`<li>${s}</li>`)}</ul></section>`
     }${c.notes && html`<section class="note"><h2>${icon("info")}注意事項</h2><p>${c.notes}</p></section>`}`;
@@ -653,11 +654,13 @@
 
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-back]")) history.back();
+    const zoom = e.target.closest("[data-zoom]");
+    if (zoom) zoom.parentNode.classList.toggle("zoomed");
     // プレビュー（Claudeの画面の中）では電話の画面に移れず、プレビューが開けなくなるので発信しない
     const call = preview && e.target.closest(".call");
     if (call) {
       e.preventDefault();
-      call.lastElementChild.textContent = "プレビューでは発信できません";
+      call.lastElementChild.textContent = "プレビューでは不可";
     }
   });
 
@@ -665,7 +668,7 @@
   document.addEventListener(
     "error",
     (e) => {
-      if (e.target.matches && e.target.matches(".photo img")) e.target.parentNode.remove();
+      if (e.target.matches && e.target.matches(".thumb img")) e.target.parentNode.remove();
     },
     true,
   );
