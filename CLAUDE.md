@@ -10,6 +10,8 @@
      このxlsxは院内のデータなのでリポジトリには入れていない。手元にない時はユーザーに渡してもらう。
    - `ログ集計ツール.html` … `intranet/log-summary.html` のコピー
    - `電話帳ひな型.csv` … 1行目 `大分類,小分類,内線番号,説明` だけのCSV（UTF-8・BOM付き）
+   - zip は日本語のファイル名に UTF-8 フラグを立てて作る（Python の zipfile で `flag_bits |= 0x800`）。
+     ロケールが POSIX の環境で `zip` コマンドを使うとフラグが付かず、Windows で展開すると名前が化ける。
 2. **プレビュー**: 同じURLのまま公開し直す。
    - アプリ: `intranet-preview/acliss-preview.html` → https://claude.ai/artifact/3Zq6YrB63hvNcmFxnkRsgM
    - ログ管理ダッシュボード: `intranet-preview/log-dashboard-preview.html` → https://claude.ai/artifact/4P6aHi8wcdkdAWrdHFEyif
