@@ -464,8 +464,8 @@
           root.querySelector("[data-body]").innerHTML = show(
             !master.data
               ? waiting()
-              : !book
-                ? html`<p class="state">電話帳がまだありません。院内サーバーの master フォルダに phonebook.csv を置くと、ここに出ます。</p>`
+              : !book || book.length === 0
+                ? html`<p class="state">電話帳がまだありません。院内サーバーの master フォルダの phonebook.csv に番号を書き足すと、ここに出ます。</p>`
                 : html`<ul class="card list">${[...new Set(book.map((p) => p.group))].map((g) => [
                     html`<li class="group">${g}</li>`,
                     book
