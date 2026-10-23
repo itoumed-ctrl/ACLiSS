@@ -100,6 +100,66 @@ button {
   stroke-linejoin: round;
 }
 
+/* ---------------------------------------------------------------- オープニング */
+
+/* ロゴの白地とつながるよう白い画面に置き、ロゴ→名前の順に浮かべる。ロゴを先に消してから
+   白地を消すので、消える途中でロゴとアプリの画面が重ならない（全体で約2秒）。
+   JavaScriptが動かなくてもCSSだけで消える */
+.opening {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.5rem;
+  background: var(--white);
+  animation: opening-out 0.35s ease-in 1.6s forwards;
+}
+.opening img {
+  width: 10.5rem;
+  height: auto;
+  animation:
+    opening-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    opening-leave 0.25s ease-in 1.4s forwards;
+}
+.opening p {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--navy);
+  animation:
+    opening-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both,
+    opening-leave 0.25s ease-in 1.4s forwards;
+}
+@keyframes opening-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.96);
+  }
+}
+@keyframes opening-leave {
+  to {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+}
+@keyframes opening-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.no-opening .opening {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .opening {
+    display: none;
+  }
+}
+
 /* ---------------------------------------------------------------- 骨組み */
 
 .appbar {

@@ -13,10 +13,21 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=__BUILD_ID__" />
     <link rel="manifest" href="manifest.webmanifest?v=__BUILD_ID__" />
     <link rel="stylesheet" href="app.css?v=__BUILD_ID__" />
+    <script>
+      // オープニングは起動した時に1回だけ（同じタブで開き直した時は出さない）
+      try {
+        if (sessionStorage.getItem("acliss-opening")) document.documentElement.classList.add("no-opening");
+        else sessionStorage.setItem("acliss-opening", "1");
+      } catch (e) {}
+    </script>
     <!-- defer: ページを読みながら並行して取り寄せ、読み終えてから動かす -->
     <script src="app.js?v=__BUILD_ID__" defer></script>
   </head>
   <body>
+    <div class="opening" aria-hidden="true">
+      <img src="icons/icon-512.png?v=__BUILD_ID__" alt="" width="168" height="168" />
+      <p>臨床検査情報提供システム</p>
+    </div>
     <header class="appbar">
       <a href="#/" class="brand">ACLiSS</a>
       <span class="brand-sub">臨床検査情報提供システム</span>

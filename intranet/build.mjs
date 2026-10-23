@@ -70,6 +70,7 @@ async function buildPreview() {
     const png = await readFile(path.join(here, "icons", icon));
     assets[`icons/${icon}`] = `data:image/png;base64,${png.toString("base64")}`;
   }
+  const openingLogo = `data:image/png;base64,${(await readFile(path.join(here, "icons", "icon-512.png"))).toString("base64")}`;
   const previewData = JSON.stringify({ files, images, assets }).replace(/</g, "\\u003c");
   const scripts = [
     `window.__ACLISS_PREVIEW__ = ${previewData};`,
@@ -80,7 +81,8 @@ async function buildPreview() {
   // 置き換える文字列に「$」が含まれていても崩れないよう、関数で置き換える
   const html = (await readApp("index.html"))
     .replace("<title>ACLiSS</title>", () => "<title>ACLiSS 院内版プレビュー</title>")
-    .replace(/ *<link rel="(icon|apple-touch-icon|manifest)"[^>]*>\n/g, () => "");
+    .replace(/ *<link rel="(icon|apple-touch-icon|manifest)"[^>]*>\n/g, () => "")
+    .replace(/src="icons\/icon-512\.png[^"]*"/, () => `src="${openingLogo}"`);
   const css = await readApp("app.css");
   const page = html
     .replace(/<link rel="stylesheet"[^>]*>/, () => `<style>${css}${PREVIEW_BAR_CSS}</style>`)

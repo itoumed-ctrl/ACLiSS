@@ -829,6 +829,13 @@
     window.scrollTo(0, 0);
   }
 
+  // オープニングは消え終わったら取り除く。タップすればすぐ閉じる
+  const opening = document.querySelector(".opening");
+  if (opening) {
+    opening.addEventListener("click", () => opening.remove());
+    opening.addEventListener("animationend", (e) => e.animationName === "opening-out" && opening.remove());
+  }
+
   window.addEventListener("hashchange", render);
   log("open");
   render();
