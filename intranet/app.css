@@ -22,6 +22,7 @@
   --warn: #9a5b00;
   --success: #15803d;
   --radius: 12px;
+  --appbar-h: 3.25rem;
   --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
     Meiryo, "Noto Sans JP", sans-serif;
   --mono: ui-monospace, Menlo, Consolas, monospace;
@@ -162,11 +163,16 @@ button {
 
 /* ---------------------------------------------------------------- 骨組み */
 
+/* ヘッダーはスクロールしても上に残す。高さを決めておき、その下に検索欄を止める */
 .appbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  height: var(--appbar-h);
+  padding: 0 1rem;
   background: var(--navy);
   color: var(--white);
 }
@@ -179,7 +185,10 @@ button {
   letter-spacing: 0.03em;
 }
 .brand-sub {
+  overflow: hidden;
   font-size: 0.8125rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: rgb(255 255 255 / 0.75);
 }
 .page {
@@ -321,10 +330,10 @@ a.row:active {
   background: var(--navy-tint);
 }
 
-/* 検索欄。スクロールしても上に残る */
+/* 検索欄。スクロールしてもヘッダーの下に残る */
 .search {
   position: sticky;
-  top: 0;
+  top: var(--appbar-h);
   z-index: 5;
   margin: -0.5rem -1rem;
   padding: 0.5rem 1rem;
