@@ -368,7 +368,7 @@
         "容器コードや種類から探します",
       )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav>${
         // 電話帳は容器を調べる2つとは用途が違うので、枠を分けて間をあける
-        html`<nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "検査部門の内線番号を選びます")}</nav>`
+        html`<nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "各検査部署へ電話します")}</nav>`
       }</div>`,
       mount: scanner.mount,
     };
