@@ -180,13 +180,12 @@
       readCsv("master/containers.csv", ["材料コード"]),
       readCsv("master/test_items.csv", ["項目コード", "名称", "材料コード"]),
       // 電話帳は置かなくても使えるよう、読めなくても容器・検査項目の表示は止めない
-      readCsv("master/phonebook.csv", ["大分類", "小分類", "内線番号"]).catch((e) => ({ error: e.message })),
+      readCsv("master/phonebook.csv", ["大分類", "小分類", "内線番号"]).catch(() => ({})),
     ]);
     // 「最終更新」には、読み込んだ時刻ではなくCSVファイル自体の更新日時を出す
     const times = [c.lastModified, t.lastModified, p.lastModified].filter((v) => v && !Number.isNaN(v));
     return {
       phonebook: p.records ? p.records.map(toPhone).filter(Boolean) : null,
-      phonebookError: p.error || null,
       containers: c.records
         .map(toContainer)
         .filter(Boolean)
@@ -217,6 +216,18 @@
   const master = { data: readCache(), loaded: false, loading: false, error: null };
   const containers = () => (master.data ? master.data.containers : []);
   const testItems = () => (master.data ? master.data.testItems : []);
+
+  // 容器コードから容器を引く表。マスタを読み直した時だけ作り直す
+  const byCodeCache = new WeakMap();
+  function containerByCode(containerCode) {
+    if (!master.data) return null;
+    let map = byCodeCache.get(master.data);
+    if (!map) {
+      map = new Map(master.data.containers.map((c) => [c.code, c]));
+      byCodeCache.set(master.data, map);
+    }
+    return map.get(containerCode) || null;
+  }
 
   // ページを開いている間に1回だけ読む。失敗した時は次に画面を移った時に読み直す
   function loadOnce() {
@@ -284,10 +295,10 @@
   const containerName = (c) => [c.vessel, c.material].filter(Boolean).join(" － ");
 
   // 検査バーコード（12桁）の9〜11桁目が容器コード（12桁目はチェックデジット）。例: 000000001210 → 121
-  const codeFromBarcode = (raw) => (/^\d{12}$/.test(raw.trim()) ? raw.trim().slice(8, 11) : null);
+  const codeFromBarcode = (raw) => (/^\d{12}$/.test((raw = raw.trim())) ? raw.slice(8, 11) : null);
 
   // 検査ラベルに印字された11桁の数字の末尾3桁が容器コード
-  const codeFromDigits = (raw) => (/^\d{11}$/.test(raw.trim()) ? raw.trim().slice(-3) : null);
+  const codeFromDigits = (raw) => (/^\d{11}$/.test((raw = raw.trim())) ? raw.slice(-3) : null);
 
   // ================================================================ 画面の共通部品
 
@@ -333,13 +344,15 @@
         }></label><div data-meta></div></div><div data-body></div></div>`,
       mount(root) {
         const input = root.querySelector("input");
+        const meta = root.querySelector("[data-meta]");
+        const body = root.querySelector("[data-body]");
         input.value = query || "";
         function update() {
           const q = normalize(input.value.trim());
           // マスタをまだ読めていない間は探さない（下で「読み込み中」を出す）
           const { rows, count } = master.data ? search(q) : { rows: [] };
-          root.querySelector("[data-meta]").innerHTML = show(updatedAt(count));
-          root.querySelector("[data-body]").innerHTML = show(
+          meta.innerHTML = show(updatedAt(count));
+          body.innerHTML = show(
             !master.data
               ? waiting()
               : rows.length > 0
@@ -419,7 +432,6 @@
       onInput: (v) => history.replaceState(history.state, "", v ? `#/search?${new URLSearchParams({ q: v })}` : "#/search"),
       search(q) {
         if (!q) return { rows: [] };
-        const byCode = new Map(containers().map((c) => [c.code, c]));
         // 表示するのは50件までなので、50件見つかった所で探すのをやめる
         const found = [];
         for (const t of testItems()) {
@@ -430,7 +442,7 @@
         return {
           rows: found.map((t) => {
             if (!t.container) return row({ title: t.name, sub: "対応する容器コードが未設定です" });
-            const c = byCode.get(t.container);
+            const c = containerByCode(t.container);
             return row({
               href: `#/containers/${t.container}`,
               from: "search",
@@ -444,9 +456,12 @@
 
   // ================================================================ 電話帳
 
+  // 内線番号から電話の画面に渡せる文字（数字と + * #）だけを残す。何も残らなければ押せる番号にしない
+  const dialable = (value) => value.replace(/[^\d+*#]/g, "");
+
   // 番号をタップすると電話の画面が開き、番号が入った状態になる（発信は本人が押す）
   function phoneButton(p) {
-    const number = p.number.replace(/[^\d+*#]/g, "");
+    const number = dialable(p.number);
     if (!number) return html`<span class="row-sub">${p.number}</span>`;
     return html`<a class="call-sm" href="tel:${number}" aria-label="${p.name}（${p.number}）に電話をかける">${icon(
       "phone",
@@ -458,25 +473,34 @@
     return {
       html: html`<div class="page">${toolbar()}<h1 class="title">電話帳</h1><div data-meta></div><div data-body></div></div>`,
       mount(root) {
+        const meta = root.querySelector("[data-meta]");
+        const body = root.querySelector("[data-body]");
         function update() {
           const book = master.data && master.data.phonebook;
-          root.querySelector("[data-meta]").innerHTML = show(book && updatedAt(book.length));
-          root.querySelector("[data-body]").innerHTML = show(
-            !master.data
-              ? waiting()
-              : !book || book.length === 0
-                ? html`<p class="state">電話帳がまだありません。院内サーバーの master フォルダの phonebook.csv に番号を書き足すと、ここに出ます。</p>`
-                : html`<ul class="card list">${[...new Set(book.map((p) => p.group))].map((g) => [
-                    html`<li class="group">${g}</li>`,
-                    book
-                      .filter((p) => p.group === g)
-                      .map(
-                        (p) =>
-                          html`<li><div class="row"><span class="row-text"><span class="row-title">${p.name}</span>${
-                            p.note && html`<span class="row-sub">${p.note}</span>`
-                          }</span>${phoneButton(p)}</div></li>`,
-                      ),
-                  ])}</ul>`,
+          meta.innerHTML = show(book && updatedAt(book.length));
+          if (!master.data || !book || book.length === 0) {
+            body.innerHTML = show(
+              waiting() ||
+                html`<p class="state">電話帳がまだありません。院内サーバーの master フォルダの phonebook.csv に番号を書き足すと、ここに出ます。</p>`,
+            );
+            return;
+          }
+          // 大分類ごとにまとめる（並びはCSVに最初に出てきた順）
+          const groups = new Map();
+          for (const p of book) {
+            if (!groups.has(p.group)) groups.set(p.group, []);
+            groups.get(p.group).push(p);
+          }
+          body.innerHTML = show(
+            html`<ul class="card list">${[...groups].map(([group, items]) => [
+              html`<li class="group">${group}</li>`,
+              items.map(
+                (p) =>
+                  html`<li><div class="row"><span class="row-text"><span class="row-title">${p.name}</span>${
+                    p.note && html`<span class="row-sub">${p.note}</span>`
+                  }</span>${phoneButton(p)}</div></li>`,
+              ),
+            ])}</ul>`,
           );
         }
         return { update };
@@ -495,7 +519,7 @@
         via = "direct";
         let logged = false;
         function update() {
-          const c = containers().find((x) => x.code === containerCode);
+          const c = containerByCode(containerCode);
           page.innerHTML = show([
             toolbar(),
             c ? detail(c) : waiting() || html`<p class="alert">容器コード「${containerCode}」は見つかりませんでした。</p>`,
@@ -511,10 +535,10 @@
     };
   }
 
-  // 内線番号はタップすると電話の画面が開き、番号が入った状態になる（発信は本人が押す）
+  // 容器画面の内線番号。電話帳と同じく、タップすると番号が入った電話の画面が開く
   function extension(phs) {
     if (!phs) return null;
-    const number = phs.replace(/[^\d+*#]/g, "");
+    const number = dialable(phs);
     if (!number) return html`<span class="fact-sub">内線 ${phs}</span>`;
     return html`<a class="call" href="tel:${number}">${icon("phone")}内線 ${phs}<span>電話をかける</span></a>`;
   }
@@ -746,8 +770,9 @@
       if (found) {
         via = "digits";
         location.hash = `/containers/${found}`;
+      } else {
+        error.textContent = "11桁の数字で入力してください（検査ラベルに印字されている数字をそのまま）";
       }
-      else error.textContent = "11桁の数字で入力してください（検査ラベルに印字されている数字をそのまま）";
     });
 
     startNative()
