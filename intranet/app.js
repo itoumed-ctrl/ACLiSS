@@ -541,7 +541,7 @@
             ([value, label]) =>
               html`<label><input type="radio" name="kind" value="${value}"${containerCode && value === "error" && html` checked`}><span>${label}</span></label>`,
           )}</div></fieldset>
-          <label class="field"><span class="label">内容</span><textarea name="message" rows="6" maxlength="${FEEDBACK_MAX}" placeholder="例: 容器006の採取量が新しい手順書と違います"></textarea><span class="counter">0 / ${FEEDBACK_MAX}</span></label>
+          <label class="field"><span class="label">内容</span><textarea name="message" rows="6" maxlength="${FEEDBACK_MAX}" placeholder="例: 容器121の写真が見れません"></textarea><span class="counter">0 / ${FEEDBACK_MAX}</span></label>
           <div class="field-row">
             <label class="field"><span class="label">容器コード（任意）</span><input name="code" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${containerCode}"></label>
             <label class="field"><span class="label">部署（任意）</span><input name="dept" type="text" maxlength="20" autocomplete="off" placeholder="例: 4E"></label>
