@@ -162,9 +162,8 @@ function sampleLog() {
   const via = { scan: 58, digits: 14, list: 10, search: 13, direct: 5 };
   const ua = "Mozilla/5.0+(Linux;+Android+14)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/129.0+Mobile+Safari/537.36";
   const rows = [];
-  const add = (jst, query) => {
+  const add = (jst, query, ip = `10.1.2.${10 + Math.floor(rand() * 50)}`) => {
     const utc = new Date(jst.getTime() - 9 * 3600e3).toISOString();
-    const ip = `10.1.2.${10 + Math.floor(rand() * 50)}`;
     rows.push([utc, `${utc.slice(0, 10)} ${utc.slice(11, 19)} 10.1.0.5 GET /acliss/log.gif ${query} 443 - ${ip} ${ua} - 200 0 0 2`]);
   };
   for (let d = 0; d < 30; d++) {
@@ -182,6 +181,23 @@ function sampleLog() {
         else add(t, `e=view&code=${pick(codes)}&via=${pick(via)}`);
       }
     }
+  }
+  // ご意見箱（架空）。長い本文は120文字ずつに分けて届く
+  const opinions = [
+    [3, 10, "error", "006", "5階東病棟", "採取量が手順書（2026年版）では10mLになっています。どちらが正しいか確認をお願いします。"],
+    [8, 14, "idea", "", "外来処置室", "よく使う容器をお気に入りに登録できると助かります。"],
+    [15, 7, "trouble", "", "", "暗い病室だとバーコードが読みにくいです。ライトのボタンに気づくまで時間がかかりました。"],
+    [22, 21, "other", "", "ICU", `夜勤帯の問い合わせが減りました。${"払い出し場所がすぐ分かるので、夜間に検査室へ電話する回数が減っています。".repeat(3)}`],
+  ];
+  for (const [d, h, kind, code, dept, text] of opinions) {
+    const at = new Date(Date.UTC(2026, 8, 21 + d, h, 12));
+    const id = `s${d}${h}`;
+    const pieces = text.match(/[\s\S]{1,120}/g);
+    const ip = `10.1.3.${d}`;
+    pieces.forEach((msg, i) => {
+      const q = new URLSearchParams({ e: "feedback", id, part: i + 1, parts: pieces.length, ...(i === 0 && { kind, code, dept }), msg, t: at.getTime() });
+      add(new Date(at.getTime() + i * 50), q.toString(), ip);
+    });
   }
   rows.sort((a, b) => a[0].localeCompare(b[0]));
   const head = "#Software: Microsoft Internet Information Services 10.0\n#Version: 1.0\n#Fields: date time s-ip cs-method cs-uri-stem cs-uri-query s-port cs-username c-ip cs(User-Agent) cs(Referer) sc-status sc-substatus sc-win32-status time-taken\n";

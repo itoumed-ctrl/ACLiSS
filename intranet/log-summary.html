@@ -379,6 +379,10 @@
         font-size: 12px;
         font-weight: 700;
       }
+      td.w {
+        min-width: 18em;
+        white-space: pre-wrap;
+      }
       td.n,
       th.n {
         text-align: right;
@@ -452,7 +456,8 @@
         // 開発確認用のプレビューでは、架空のサンプルログが埋め込まれている
         const sample = window.__ACLISS_LOG_SAMPLE__;
 
-        const EVENTS = { open: "アプリを開いた", view: "容器を開いた", notfound: "見つからない容器コード", camera: "カメラが使えなかった", "master-error": "マスタを読めなかった" };
+        const EVENTS = { open: "アプリを開いた", view: "容器を開いた", notfound: "見つからない容器コード", camera: "カメラが使えなかった", "master-error": "マスタを読めなかった", feedback: "ご意見箱" };
+        const KINDS = { error: "内容の誤り", trouble: "使いにくい・不具合", idea: "ほしい機能", other: "その他" };
         const VIA = { scan: "バーコード", digits: "手入力", list: "容器一覧", search: "検査項目検索", direct: "URL・戻る" };
         const VIA_ORDER = ["scan", "digits", "list", "search", "direct"];
         const REASON = { https: "HTTPSで開いていない", denied: "カメラの利用を許可していない", nodevice: "カメラが見つからない", other: "その他" };
@@ -489,6 +494,13 @@
               code: q.get("code") || "",
               via: q.get("via") || "",
               reason: q.get("reason") || "",
+              // ご意見箱：本文は120文字ずつに分けて届くので、id・part・parts でつなぎ直す
+              id: q.get("id") || "",
+              part: Number(q.get("part")) || 1,
+              parts: Number(q.get("parts")) || 1,
+              kind: q.get("kind") || "",
+              dept: q.get("dept") || "",
+              msg: q.get("msg") || "",
               agent: (row["cs(User-Agent)"] || "").replace(/\+/g, " "),
             });
           }
@@ -581,8 +593,34 @@
           rows.length === 0
             ? `<p class="empty">記録はありません</p>`
             : `<div class="scroll"><table><tr>${head.map((h) => `<th class="${h.n ? "n" : ""}">${esc(h.t)}</th>`).join("")}</tr>${rows
-                .map((r) => `<tr>${r.map((c, i) => `<td class="${head[i].n ? "n" : ""}">${esc(c)}</td>`).join("")}</tr>`)
+                .map((r) => `<tr>${r.map((c, i) => `<td class="${head[i].n ? "n" : head[i].w ? "w" : ""}">${esc(c)}</td>`).join("")}</tr>`)
                 .join("")}</table></div>`;
+
+        // ご意見箱の記録を1件ずつにまとめる（同じ端末・同じ id の分けた本文をつなぐ）。足りない分があれば印を付ける
+        function feedbacks(events) {
+          const groups = new Map();
+          for (const e of events.filter((x) => x.event === "feedback")) {
+            const key = `${e.ip} ${e.id}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(e);
+          }
+          return [...groups.values()]
+            .map((items) => {
+              items.sort((a, b) => a.part - b.part);
+              const first = items.find((x) => x.part === 1) || items[0];
+              const complete = new Set(items.map((x) => x.part)).size === first.parts;
+              return {
+                at: items.reduce((t, x) => (x.at < t ? x.at : t), items[0].at),
+                ip: first.ip,
+                agent: first.agent,
+                kind: KINDS[first.kind] || first.kind,
+                code: first.code,
+                dept: first.dept,
+                text: [...new Map(items.map((x) => [x.part, x.msg])).values()].join("") + (complete ? "" : "（一部が届いていません）"),
+              };
+            })
+            .sort((a, b) => b.at - a.at);
+        }
 
         let current = { events: [], names: null };
 
@@ -599,6 +637,7 @@
           events.sort((a, b) => a.at - b.at);
           const by = (e) => events.filter((x) => x.event === e);
           const views = by("view"), missing = by("notfound"), cams = by("camera"), opens = by("open");
+          const opinions = feedbacks(events);
           const name = (code) => (names && names[code]) || "";
 
           // 期間の全日（記録のない日も0として並べる）
@@ -655,6 +694,7 @@
               <div class="tile"><p>アプリを開いた</p><strong>${opens.length}<small>回</small></strong></div>
               <div class="tile${missing.length ? " alert" : ""}"><p>見つからない容器コード</p><strong>${missing.length}<small>回</small></strong></div>
               <div class="tile${cams.length ? " alert" : ""}"><p>カメラが使えなかった</p><strong>${cams.length}<small>回</small></strong></div>
+              <div class="tile"><p>ご意見箱</p><strong>${opinions.length}<small>件</small></strong></div>
             </div>
             <div class="charts">
               <section class="card wide"><h2>日別：容器を開いた回数</h2><p class="sub">棒にカーソルを合わせると、その日のアプリを開いた回数も出ます</p>${vchart(daily, Math.max(1, Math.ceil(dayCount / 6)))}</section>
@@ -666,6 +706,10 @@
               <section class="card"><h2>見つからなかった容器コード</h2><p class="sub">マスタの登録漏れや、ラベルの印字違いの確認に</p>${table([{ t: "容器コード" }, { t: "回数", n: 1 }, { t: "開いた方法" }], missingRows)}</section>
               <section class="card"><h2>カメラが使えなかった理由</h2><p class="sub">端末ごとに、アプリを開いて最初の1回だけ記録</p>${table([{ t: "理由" }, { t: "回数", n: 1 }], camRows)}</section>
             </div>
+            <section class="card"><h2>ご意見箱</h2><p class="sub">新しい順。患者さんの情報が書かれていたら、ログの扱いに沿って対応してください</p>${table(
+              [{ t: "日時（日本時間）" }, { t: "種類" }, { t: "容器コード" }, { t: "部署" }, { t: "内容", w: 1 }],
+              opinions.map((o) => [stamp(o.at), o.kind, o.code, o.dept, o.text]),
+            )}</section>
             <details class="card"><summary>すべての容器（表）</summary>${table(
               [{ t: "容器コード" }, { t: "容器名" }, { t: "合計", n: 1 }, ...VIA_ORDER.map((k) => ({ t: VIA[k], n: 1 }))],
               allRows,
@@ -678,12 +722,14 @@
         function saveCsv() {
           const { events, names } = current;
           const name = (code) => (names && names[code]) || "";
-          const head = ["日時（日本時間）", "端末のIPアドレス", "操作", "容器コード", "容器名", "開いた方法", "カメラの理由", "ブラウザ"];
-          const lines = events.map((e) =>
-            [stamp(e.at), e.ip, EVENTS[e.event] || e.event, e.code, name(e.code), VIA[e.via] || e.via, REASON[e.reason] || e.reason, e.agent]
-              .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-              .join(","),
-          );
+          const head = ["日時（日本時間）", "端末のIPアドレス", "操作", "容器コード", "容器名", "開いた方法", "カメラの理由", "ご意見の種類", "部署", "ご意見", "ブラウザ"];
+          const rows = [
+            ...events
+              .filter((e) => e.event !== "feedback")
+              .map((e) => [e.at, e.ip, EVENTS[e.event] || e.event, e.code, name(e.code), VIA[e.via] || e.via, REASON[e.reason] || e.reason, "", "", "", e.agent]),
+            ...feedbacks(events).map((o) => [o.at, o.ip, EVENTS.feedback, o.code, name(o.code), "", "", o.kind, o.dept, o.text, o.agent]),
+          ].sort((a, b) => a[0] - b[0]);
+          const lines = rows.map(([at, ...rest]) => [stamp(at), ...rest].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
           const blob = new Blob(["\uFEFF" + [head.join(","), ...lines].join("\r\n")], { type: "text/csv" });
           const a = document.createElement("a");
           a.href = URL.createObjectURL(blob);

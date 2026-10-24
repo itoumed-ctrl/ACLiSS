@@ -35,6 +35,8 @@
     tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
     phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/>',
+    message: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
   };
 
   const icon = (name) => ({ html: `<span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[name]}</svg></span>` });
@@ -259,10 +261,21 @@
   //   e=view      容器の画面を開いた（code=容器コード、via=scan・digits・list・search・direct）
   //   e=notfound  マスタにない容器コードを開いた（code・via は view と同じ）
   //   e=camera    カメラが使えなかった（reason=https・denied・nodevice・other）
+  //   e=feedback  ご意見箱から送った（下の feedbackPage を参照）
   function log(event, details) {
     if (preview) return; // 開発確認用のプレビューでは記録しない
+    send(event, details).catch(() => {});
+  }
+
+  // log.gif を取りに行き、届いたかどうかを返す
+  function send(event, details) {
     const params = new URLSearchParams({ e: event, ...details, t: Date.now() });
-    new Image().src = `log.gif?${params}`;
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = `log.gif?${params}`;
+    });
   }
 
   // どこから容器の画面を開いたか。容器の画面を開いた時に記録して direct（URL・戻る）に戻す
@@ -382,7 +395,7 @@
       )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav>${
         // 電話帳は容器を調べる2つとは用途が違うので、枠を分けて間をあける
         html`<nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "各検査部署へ電話します")}</nav>`
-      }</div>`,
+      }<a class="footer-link" href="#/feedback">${icon("message")}ご意見箱（内容の誤り・ご要望）</a></div>`,
       mount: scanner.mount,
     };
   }
@@ -508,6 +521,88 @@
     };
   }
 
+  // ================================================================ ご意見箱
+
+  // 送った内容は、利用の記録と同じく log.gif を取りに行くことで、Webサーバーのアクセスログに残す
+  // （サーバー側にプログラムを置かない）。読むのはログ集計ツールの「ご意見箱」。
+  // IISは「?」以降が2048バイトを超えると受け付けないので、本文は120文字ずつに分けて送り、
+  // 同じ id・part（何番目）・parts（全部で何通）を付けて、集計ツールでつなぎ直す。
+  const FEEDBACK_KINDS = { error: "内容の誤り", trouble: "使いにくい・不具合", idea: "ほしい機能", other: "その他" };
+  const FEEDBACK_MAX = 400;
+  const FEEDBACK_PART = 120;
+
+  function feedbackPage(query) {
+    const containerCode = new URLSearchParams(query).get("code") || "";
+    return {
+      html: html`<div class="page">${toolbar()}<h1 class="title">ご意見箱</h1>
+        <p class="lead">ACLiSSの内容の誤り、使いにくい点、ほしい機能などを教えてください。臨床検査科で確認します（個別の返信はできません）。</p>
+        <form class="card feedback" novalidate>
+          <fieldset><legend class="label">種類</legend><div class="choices">${Object.entries(FEEDBACK_KINDS).map(
+            ([value, label]) =>
+              html`<label><input type="radio" name="kind" value="${value}"${containerCode && value === "error" && html` checked`}><span>${label}</span></label>`,
+          )}</div></fieldset>
+          <label class="field"><span class="label">内容</span><textarea name="message" rows="6" maxlength="${FEEDBACK_MAX}" placeholder="例: 容器006の採取量が新しい手順書と違います"></textarea><span class="counter">0 / ${FEEDBACK_MAX}</span></label>
+          <div class="field-row">
+            <label class="field"><span class="label">容器コード（任意）</span><input name="code" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${containerCode}"></label>
+            <label class="field"><span class="label">部署（任意）</span><input name="dept" type="text" maxlength="20" autocomplete="off" placeholder="例: 5階東病棟"></label>
+          </div>
+          <p class="caution">${icon("info")}患者さんの氏名・ID・病名などは書かないでください。</p>
+          <p class="field-error" hidden></p>
+          <button type="submit" class="primary">送信する</button>
+        </form></div>`,
+      mount(root) {
+        const form = root.querySelector("form");
+        const message = form.elements.message;
+        const counter = form.querySelector(".counter");
+        const error = form.querySelector(".field-error");
+        message.addEventListener("input", () => (counter.textContent = `${message.value.length} / ${FEEDBACK_MAX}`));
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const kind = form.elements.kind.value;
+          const text = message.value.trim();
+          error.hidden = Boolean(kind && text);
+          if (!kind || !text) {
+            error.textContent = !kind ? "種類を選んでください" : "内容を入力してください";
+            return;
+          }
+          const button = form.querySelector("button");
+          button.disabled = true;
+          button.textContent = "送信中...";
+          const id = Math.random().toString(36).slice(2, 8);
+          const pieces = [];
+          for (let i = 0; i < text.length; i += FEEDBACK_PART) pieces.push(text.slice(i, i + FEEDBACK_PART));
+          try {
+            if (!preview) {
+              await Promise.all(
+                pieces.map((msg, i) =>
+                  send("feedback", {
+                    id,
+                    part: i + 1,
+                    parts: pieces.length,
+                    // 種類・容器コード・部署は1通目にだけ付ける
+                    ...(i === 0 && { kind, code: form.elements.code.value.trim(), dept: form.elements.dept.value.trim() }),
+                    msg,
+                  }),
+                ),
+              );
+            }
+            form.outerHTML = show(
+              html`<section class="card sent">${icon("check")}<h2>送信しました</h2><p>ご意見ありがとうございます。${
+                preview && "（プレビューでは実際には送信しません）"
+              }</p><div class="sent-actions"><a class="primary" href="#/">ホームに戻る</a><a href="#/feedback" data-again>続けて送る</a></div></section>`,
+            );
+          } catch {
+            button.disabled = false;
+            button.textContent = "送信する";
+            error.textContent = "送信できませんでした。電波の届く場所で、もう一度お試しください。";
+            error.hidden = false;
+          }
+        });
+        return {};
+      },
+    };
+  }
+
   // ================================================================ 容器詳細
 
   function containerPage(containerCode) {
@@ -570,7 +665,9 @@
     )}${(c.inquiry || c.inquiryPhs) && fact("検査問い合わせ先", c.inquiry || "", extension(c.inquiryPhs))}</dl>${
       c.instructions.length > 0 &&
       html`<section class="note gold"><h2>${icon("tag")}指示ラベル</h2><ul>${c.instructions.map((s) => html`<li>${s}</li>`)}</ul></section>`
-    }${c.notes && html`<section class="note"><h2>${icon("info")}注意事項</h2><p>${c.notes}</p></section>`}`;
+    }${c.notes && html`<section class="note"><h2>${icon("info")}注意事項</h2><p>${c.notes}</p></section>`}<a class="footer-link" href="#/feedback?code=${encodeURIComponent(
+      c.code,
+    )}">${icon("message")}この容器の情報の誤りを知らせる</a>`;
   }
 
   // ================================================================ バーコード
@@ -802,6 +899,12 @@
 
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-back]")) history.back();
+    // 「続けて送る」：同じURLのままでも入力欄を空にして作り直す
+    if (e.target.closest("[data-again]") && location.hash === "#/feedback") {
+      e.preventDefault();
+      currentHash = null;
+      render();
+    }
     const link = e.target.closest("[data-via]");
     if (link) via = link.dataset.via;
     // プレビュー（Claudeの画面の中）では電話の画面に移れず、プレビューが開けなくなるので発信しない
@@ -828,6 +931,7 @@
     if (path === "/containers") return containersPage();
     if (path === "/search") return searchPage(query);
     if (path === "/phonebook") return phonebookPage();
+    if (path === "/feedback") return feedbackPage(query);
     const m = path.match(/^\/containers\/([^/]+)$/);
     if (m) return containerPage(decodeURIComponent(m[1]));
     return { html: html`<div class="page">${toolbar()}<p class="state">ページが見つかりません。</p></div>` };
@@ -835,12 +939,13 @@
 
   const main = document.getElementById("main");
   let current = {};
-  let currentPath = null;
+  let currentHash = null;
 
+  // URLの#以降が変わった時だけ作り直す（検索語は replaceState で書き換えるので、入力のたびには呼ばれない）
   function render() {
+    if (location.hash === currentHash) return;
+    currentHash = location.hash;
     const [path, query = ""] = (location.hash.slice(1) || "/").split("?");
-    if (path === currentPath) return;
-    currentPath = path;
 
     // 画面ごとに作り直す（カメラのある画面を離れるとカメラも止まる）
     if (current.destroy) current.destroy();

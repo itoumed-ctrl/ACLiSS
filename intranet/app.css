@@ -72,7 +72,8 @@ svg {
   max-width: 100%;
 }
 button,
-input {
+input,
+textarea {
   font: inherit;
   color: inherit;
   background: none;
@@ -695,4 +696,177 @@ a.row:active {
 }
 .note p {
   white-space: pre-wrap;
+}
+
+/* ---------------------------------------------------------------- ご意見箱 */
+
+/* ホーム・容器画面のいちばん下に置く、控えめな入口 */
+.footer-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 44px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.footer-link .icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.lead {
+  margin-top: -0.5rem;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+.feedback .label {
+  display: block;
+  margin-bottom: 0.375rem;
+}
+/* 種類は押しやすい大きさのボタンにして、選んだものを紺で塗る */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.choices input {
+  position: absolute;
+  opacity: 0;
+}
+.choices span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--field);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: center;
+}
+.choices input:checked + span {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--white);
+}
+.choices input:focus-visible + span {
+  outline: 3px solid rgb(32 56 99 / 0.4);
+  outline-offset: 2px;
+}
+.field {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+.field textarea,
+.field input {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--field);
+  border-radius: 10px;
+  background: var(--white);
+  font-size: 1.0625rem;
+  outline: none;
+}
+.field textarea {
+  resize: vertical;
+  padding-bottom: 1.75rem;
+}
+.field textarea:focus,
+.field input:focus {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgb(32 56 99 / 0.15);
+}
+.counter {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.5rem;
+  color: var(--ink-3);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+}
+.caution {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 10px;
+  background: var(--gold-tint);
+  color: var(--gold-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.caution .icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+}
+.feedback .field-error {
+  margin-top: -0.5rem;
+}
+.primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: var(--white);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+.primary:disabled {
+  opacity: 0.6;
+}
+.sent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem 1.25rem;
+  text-align: center;
+}
+.sent > .icon svg {
+  width: 3rem;
+  height: 3rem;
+  color: var(--success);
+  stroke-width: 1.75;
+}
+.sent h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--navy);
+}
+.sent p {
+  color: var(--ink-2);
+}
+.sent-actions {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 0.25rem;
+  margin-top: 1rem;
+}
+.sent-actions a:not(.primary) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  color: var(--navy);
+  font-weight: 600;
 }
