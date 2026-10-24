@@ -544,7 +544,7 @@
           <label class="field"><span class="label">内容</span><textarea name="message" rows="6" maxlength="${FEEDBACK_MAX}" placeholder="例: 容器006の採取量が新しい手順書と違います"></textarea><span class="counter">0 / ${FEEDBACK_MAX}</span></label>
           <div class="field-row">
             <label class="field"><span class="label">容器コード（任意）</span><input name="code" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${containerCode}"></label>
-            <label class="field"><span class="label">部署（任意）</span><input name="dept" type="text" maxlength="20" autocomplete="off" placeholder="例: 5階東病棟"></label>
+            <label class="field"><span class="label">部署（任意）</span><input name="dept" type="text" maxlength="20" autocomplete="off" placeholder="例: 4E"></label>
           </div>
           <p class="caution">${icon("info")}患者さんの氏名・ID・病名などは書かないでください。</p>
           <p class="field-error" hidden></p>
