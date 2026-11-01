@@ -28,13 +28,17 @@ acliss/                  ← フォルダ名・置き場所は自由
 ├── app.css
 ├── manifest.webmanifest
 ├── icons/               ← ブラウザのタブ・ホーム画面のアイコン（院内サーバー版専用の絵）、トップのメニューのアイコン
-├── vendor/              ← バーコード読み取り部品（iPhoneなどで使用）
+├── vendor/              ← バーコード読み取り部品（iPhoneなどで使用）、PDFの表示部品（vendor/pdfjs）
 ├── log.gif              ← 利用の記録用の空の画像（下の「利用の記録」）
 ├── master/              ← マスタCSV（院内で管理）
 │   ├── containers.csv
-│   └── test_items.csv
-└── images/              ← 容器写真（院内で管理）
-    ├── 073.png
+│   ├── test_items.csv
+│   ├── phonebook.csv    ← 電話帳（置かなくても可）
+│   └── torisetsu.csv    ← ケンサのトリセツの一覧（置かなくても可）
+├── images/              ← 容器写真（院内で管理）
+│   ├── 073.png
+│   └── …
+└── torisetsu/           ← ケンサのトリセツのPDF（院内で管理）
     └── …
 ```
 
@@ -48,6 +52,9 @@ acliss/                  ← フォルダ名・置き場所は自由
 - IISでは、未登録の拡張子のファイルを配信しない設定になっていることがあります。
   `master/containers.csv` や `manifest.webmanifest` が開けない場合は、MIMEの種類に
   `.csv`（`text/csv`）と `.webmanifest`（`application/manifest+json`）を追加してください。
+- ケンサのトリセツで、フォントが埋め込まれていないPDFや特殊な画像形式のPDFも表示したい場合は、
+  さらに `.bcmap`・`.pfb`（`application/octet-stream`）、`.wasm`（`application/wasm`）、`.icc`（`application/vnd.iccprofile`）を
+  追加してください。PowerPointやWordの「PDFとして保存」で作ったPDFは、追加しなくても表示できます。
 
 ## マスタの更新方法
 
@@ -96,6 +103,22 @@ acliss/                  ← フォルダ名・置き場所は自由
 - 列名が違うなど読み込めないCSVを置いた場合、端末に前回の内容が残っていればそれを表示し、
   「前回のデータを表示中」と出ます。
 
+### ケンサのトリセツ（`torisetsu/` フォルダと `master/torisetsu.csv`、置かなくても可）
+
+トップの「ケンサのトリセツ」に、分類ごとにタイトルが並びます。タップすると、PDFがACLiSSの画面の中に
+表示されます（端末にはダウンロードされません。表示部品の PDF.js は、トリセツを開いた時に初めて読み込みます）。
+PDFを `torisetsu/` に置き、`master/torisetsu.csv` に1行書き足すと増えます。
+
+| 列 | 必須 | 画面での表示 |
+|---|---|---|
+| 分類 | | 見出し（空なら「その他」） |
+| タイトル | ○ | 一覧と、PDFの画面の見出し |
+| ファイル名 | ○ | `torisetsu/` に置いたPDFの名前（例: `blood-culture.pdf`）。`\ / : * ? " < >` と縦棒は使えません |
+| 説明 | | タイトルの下に小さく表示 |
+| 更新日 | | 説明の後ろに「更新 2026/10/15」のように表示 |
+
+並びはCSVに書いた順です。PDFは1冊数MBまでを目安にしてください（写真が多いと病棟の電波では開くのに時間がかかります）。
+
 ### 写真（`images/` フォルダ）
 
 - 写真はPNGで、ファイル名を「容器コード.png」にします（例: `073.png`）。
@@ -118,6 +141,7 @@ acliss/                  ← フォルダ名・置き場所は自由
 | `camera` | カメラが使えなかった（1回開くごとに1回まで） | `reason`（`https` HTTPSでない・`denied` 許可なし・`nodevice` カメラなし・`other`） |
 | `master-error` | マスタCSVを読めなかった | なし |
 | `feedback` | ご意見箱から送った | `kind`（`error` 内容の誤り・`trouble` 使いにくい・不具合・`idea` ほしい機能・`other`）、`code`、`dept`（部署）、`msg`（本文）、`id`・`part`・`parts` |
+| `torisetsu` | ケンサのトリセツを開いた | `file`（PDFのファイル名） |
 
 - ご意見箱の本文（400文字まで）は、IISが受け付ける長さ（`?` 以降2048バイト）に収まるよう120文字ずつに分けて送り、
   集計ツールが `id`・`part`・`parts` でつなぎ直します。種類・容器コード・部署は1通目にだけ付きます。
@@ -135,8 +159,8 @@ IISのログファイル（例: `C:\inetpub\logs\LogFiles\W3SVC1\u_ex261020.log`
 
 ## アプリ本体の更新
 
-新しい `intranet-dist/` の中身で上書きします。このとき、院内で管理している `master/` と
-`images/` は上書き・削除しないでください（ビルド結果の `master/`・`images/` には説明の
+新しい `intranet-dist/` の中身で上書きします。このとき、院内で管理している `master/`・
+`images/`・`torisetsu/` は上書き・削除しないでください（ビルド結果のこれらのフォルダには説明の
 テキストファイルしか入っていません）。
 
 ## 作り直し方（開発者向け）

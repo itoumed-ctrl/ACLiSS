@@ -4,6 +4,7 @@
   "use strict";
 
   const ZXING_JS = "vendor/zxing-browser.min.js?v=__BUILD_ID__";
+  const PDFJS = "vendor/pdfjs/";
   const CACHE_KEY = "acliss-intranet-master-v3";
 
   // 開発確認用のプレビュー（npm run build:intranet -- --preview）では、CSVと画像がページに埋め込まれている
@@ -177,17 +178,29 @@
     return { group: text(row["大分類"]) || "その他", name, number, note: text(row["説明"]) };
   }
 
+  // ケンサのトリセツ（master/torisetsu.csv）の1行。PDFは torisetsu/ フォルダに置く。
+  // ファイル名はフォルダの外を指せないよう、区切り文字を含まない「○○.pdf」だけを使う
+  const isPdfName = (file) => /^[^\\/:*?"<>|]+\.pdf$/i.test(file) && !file.startsWith(".");
+  function toManual(row) {
+    const title = text(row["タイトル"]);
+    const file = text(row["ファイル名"]);
+    if (!title || !file || !isPdfName(file)) return null;
+    return { group: text(row["分類"]) || "その他", title, file, note: text(row["説明"]), date: text(row["更新日"]) };
+  }
+
   async function loadMaster() {
-    const [c, t, p] = await Promise.all([
+    const [c, t, p, m] = await Promise.all([
       readCsv("master/containers.csv", ["材料コード"]),
       readCsv("master/test_items.csv", ["項目コード", "名称", "材料コード"]),
-      // 電話帳は置かなくても使えるよう、読めなくても容器・検査項目の表示は止めない
+      // 電話帳とトリセツは置かなくても使えるよう、読めなくても容器・検査項目の表示は止めない
       readCsv("master/phonebook.csv", ["大分類", "小分類", "内線番号"]).catch(() => ({})),
+      readCsv("master/torisetsu.csv", ["タイトル", "ファイル名"]).catch(() => ({})),
     ]);
     // 「最終更新」には、読み込んだ時刻ではなくCSVファイル自体の更新日時を出す
     const times = [c.lastModified, t.lastModified, p.lastModified].filter((v) => v && !Number.isNaN(v));
     return {
       phonebook: p.records ? p.records.map(toPhone).filter(Boolean) : null,
+      manuals: m.records ? m.records.map(toManual).filter(Boolean) : null,
       containers: c.records
         .map(toContainer)
         .filter(Boolean)
@@ -261,6 +274,7 @@
   //   e=view      容器の画面を開いた（code=容器コード、via=scan・digits・list・search・direct）
   //   e=notfound  マスタにない容器コードを開いた（code・via は view と同じ）
   //   e=camera    カメラが使えなかった（reason=https・denied・nodevice・other）
+  //   e=torisetsu ケンサのトリセツを開いた（file=PDFのファイル名）
   //   e=feedback  ご意見箱から送った（下の feedbackPage を参照）
   function log(event, details) {
     if (preview) return; // 開発確認用のプレビューでは記録しない
@@ -394,7 +408,12 @@
         "容器コードや種類から探します",
       )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav>${
         // 電話帳は容器を調べる2つとは用途が違うので、枠を分けて間をあける
-        html`<nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "各検査部署へ電話します")}</nav>`
+        html`<nav class="card list menu">${menuItem("#/torisetsu", "menu-torisetsu.png", "ケンサのトリセツ", "検査の教育資料を読みます")}${menuItem(
+          "#/phonebook",
+          "menu-phonebook.png",
+          "電話帳",
+          "各検査部署へ電話します",
+        )}</nav>`
       }<a class="footer-link" href="#/feedback">${icon("message")}ご意見箱（内容の誤り・ご要望）</a></div>`,
       mount: scanner.mount,
     };
@@ -481,6 +500,16 @@
     )}<span>${p.number}</span></a>`;
   }
 
+  // 分類（group）ごとにまとめる。分類の並びはCSVに最初に出てきた順
+  function groupBy(items) {
+    const groups = new Map();
+    for (const item of items) {
+      if (!groups.has(item.group)) groups.set(item.group, []);
+      groups.get(item.group).push(item);
+    }
+    return [...groups];
+  }
+
   // 検索欄は置かず、大分類の見出しの下に小分類（説明つき）と番号を並べる（並びはCSVに書いた順）
   function phonebookPage() {
     return {
@@ -498,14 +527,8 @@
             );
             return;
           }
-          // 大分類ごとにまとめる（並びはCSVに最初に出てきた順）
-          const groups = new Map();
-          for (const p of book) {
-            if (!groups.has(p.group)) groups.set(p.group, []);
-            groups.get(p.group).push(p);
-          }
           body.innerHTML = show(
-            html`<ul class="card list">${[...groups].map(([group, items]) => [
+            html`<ul class="card list">${groupBy(book).map(([group, items]) => [
               html`<li class="group">${group}</li>`,
               items.map(
                 (p) =>
@@ -517,6 +540,160 @@
           );
         }
         return { update };
+      },
+    };
+  }
+
+  // ================================================================ ケンサのトリセツ
+
+  // 分類の見出しの下に、タイトル・説明・更新日を並べる（並びはCSVに書いた順）
+  function manualsPage() {
+    return {
+      html: html`<div class="page">${toolbar()}<h1 class="title">ケンサのトリセツ</h1><div data-meta></div><div data-body></div></div>`,
+      mount(root) {
+        const meta = root.querySelector("[data-meta]");
+        const body = root.querySelector("[data-body]");
+        function update() {
+          const manuals = master.data && master.data.manuals;
+          meta.innerHTML = show(manuals && updatedAt(manuals.length));
+          if (!master.data || !manuals || manuals.length === 0) {
+            body.innerHTML = show(
+              waiting() ||
+                html`<p class="state">トリセツがまだありません。院内サーバーの torisetsu フォルダにPDFを置き、master フォルダの torisetsu.csv に1行書き足すと、ここに出ます。</p>`,
+            );
+            return;
+          }
+          body.innerHTML = show(
+            html`<ul class="card list">${groupBy(manuals).map(([group, items]) => [
+              html`<li class="group">${group}</li>`,
+              items.map((d) =>
+                row({
+                  href: `#/torisetsu/${encodeURIComponent(d.file)}`,
+                  title: d.title,
+                  sub: [d.note, d.date && `更新 ${d.date}`].filter(Boolean).join("・"),
+                }),
+              ),
+            ])}</ul>`,
+          );
+        }
+        return { update };
+      },
+    };
+  }
+
+  // PDFの表示部品（PDF.js）は、トリセツを開いた時に初めて読み込む。
+  // ファイル名は .js にしてある（IISは初期設定では .mjs を配信しないため）
+  let pdfjs = null;
+  function loadPdfjs() {
+    if (!pdfjs) {
+      // import() には「vendor/…」のような書き方を渡せないので、ページの場所からの完全なURLにする
+      const url = (file) =>
+        preview
+          ? URL.createObjectURL(new Blob([preview.pdfjs[file]], { type: "text/javascript" }))
+          : new URL(`${PDFJS}${file}?v=__BUILD_ID__`, location.href).href;
+      pdfjs = import(url("pdf.min.js")).then((lib) => {
+        lib.GlobalWorkerOptions.workerSrc = url("pdf.worker.min.js");
+        return lib;
+      });
+      pdfjs.catch(() => (pdfjs = null)); // 読めなかった時は、次に開いた時にもう一度読む
+    }
+    return pdfjs;
+  }
+
+  function manualPage(file) {
+    return {
+      html: html`<div class="page">${toolbar()}<div data-head></div><div class="pdf" data-pages><p class="state">読み込み中...</p></div></div>`,
+      mount(root) {
+        const head = root.querySelector("[data-head]");
+        const pages = root.querySelector("[data-pages]");
+        let task = null; // 読み込みの操作口。画面を離れる時にこれで読み込みを止め、メモリを返す
+        let doc = null;
+        let observer = null;
+        let stopped = false;
+        let logged = false;
+
+        function update() {
+          const d = master.data && (master.data.manuals || []).find((x) => x.file === file);
+          head.innerHTML = show(
+            html`<h1 class="title">${d ? d.title : file}</h1>${d && (d.note || d.date) && html`<p class="meta">${[d.note, d.date && `更新 ${d.date}`].filter(Boolean).join("・")}</p>`}`,
+          );
+          if (!logged && master.data) {
+            logged = true;
+            log("torisetsu", { file });
+          }
+        }
+
+        async function open() {
+          const lib = await loadPdfjs();
+          const src = preview
+            ? { data: Uint8Array.from(atob(preview.manuals[file] || ""), (ch) => ch.charCodeAt(0)) }
+            : { url: `torisetsu/${encodeURIComponent(file)}` };
+          const base = new URL(PDFJS, location.href).href;
+          task = lib.getDocument({
+            ...src,
+            cMapUrl: `${base}cmaps/`,
+            standardFontDataUrl: `${base}standard_fonts/`,
+            wasmUrl: `${base}wasm/`,
+            iccUrl: `${base}iccs/`,
+            enableXfa: false,
+          });
+          doc = await task.promise;
+          if (stopped) return;
+
+          // ページの枠を先に並べ、画面に近づいたページから描く（長い資料でも最初の表示を待たせない）
+          pages.innerHTML = show(html`<p class="meta">全${doc.numPages}ページ</p>`);
+          const first = await doc.getPage(1);
+          const ratio = (v) => v.height / v.width;
+          const firstRatio = ratio(first.getViewport({ scale: 1 }));
+          for (let n = 1; n <= doc.numPages; n++) {
+            const box = document.createElement("div");
+            box.className = "pdf-page";
+            box.dataset.page = n;
+            box.style.aspectRatio = `1 / ${firstRatio}`;
+            box.setAttribute("aria-label", `${n}ページ目`);
+            pages.append(box);
+          }
+          observer = new IntersectionObserver(
+            (entries) => {
+              for (const e of entries) {
+                if (!e.isIntersecting || e.target.dataset.done) continue;
+                e.target.dataset.done = "1";
+                draw(e.target).catch(() => (e.target.textContent = "このページを表示できませんでした"));
+              }
+            },
+            { rootMargin: "600px 0px" },
+          );
+          pages.querySelectorAll(".pdf-page").forEach((box) => observer.observe(box));
+        }
+
+        // 端末の画面の細かさに合わせて描く（ピンチで拡大しても読めるよう少し細かめ。大きくなりすぎないよう上限あり）
+        async function draw(box) {
+          const page = await doc.getPage(Number(box.dataset.page));
+          const base = page.getViewport({ scale: 1 });
+          box.style.aspectRatio = `${base.width} / ${base.height}`;
+          const scale = Math.min((box.clientWidth * Math.min(devicePixelRatio || 1, 3) * 1.5) / base.width, 2400 / base.width);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          await page.render({ canvas, viewport }).promise;
+          if (!stopped) box.replaceChildren(canvas);
+        }
+
+        open().catch(() => {
+          if (stopped) return;
+          pages.innerHTML = show(
+            html`<p class="alert">トリセツを表示できませんでした。電波の届く場所で開き直してください。続くときは臨床検査科にご連絡ください。</p>`,
+          );
+        });
+        return {
+          update,
+          destroy() {
+            stopped = true;
+            if (observer) observer.disconnect();
+            if (task) task.destroy();
+          },
+        };
       },
     };
   }
@@ -931,6 +1108,9 @@
     if (path === "/containers") return containersPage();
     if (path === "/search") return searchPage(query);
     if (path === "/phonebook") return phonebookPage();
+    if (path === "/torisetsu") return manualsPage();
+    const manual = path.match(/^\/torisetsu\/([^/]+)$/);
+    if (manual && isPdfName(decodeURIComponent(manual[1]))) return manualPage(decodeURIComponent(manual[1]));
     if (path === "/feedback") return feedbackPage(query);
     const m = path.match(/^\/containers\/([^/]+)$/);
     if (m) return containerPage(decodeURIComponent(m[1]));

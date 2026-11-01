@@ -1,9 +1,11 @@
-このフォルダに、次のCSVファイルを置いてください（phonebook.csv は置かなくても使えます）。
+このフォルダに、次のCSVファイルを置いてください（phonebook.csv・torisetsu.csv は置かなくても使えます）。
 
   containers.csv   … ACLiSSマスタ.xlsx の「材料」シートをCSVで保存したもの
   test_items.csv   … ACLiSSマスタ.xlsx の「オーダ可能項目」シートをCSVで保存したもの
   phonebook.csv    … 電話帳（置かなくても可）。列は 大分類・小分類・内線番号・説明。
                      配布する zip には1行目（列名）だけのものが入っているので、Excelで開いて行を書き足します
+  torisetsu.csv    … ケンサのトリセツの一覧（置かなくても可）。列は 分類・タイトル・ファイル名・説明・更新日。
+                     PDFは torisetsu フォルダに置きます（くわしくは torisetsu/README.txt）
 
 ・Excelで各シートを開き、「名前を付けて保存」で「CSV UTF-8」または「CSV（コンマ区切り）」を
   選んで保存します（ExcelのCSV保存は、開いているシート1枚だけが保存されます）。

@@ -456,7 +456,7 @@
         // 開発確認用のプレビューでは、架空のサンプルログが埋め込まれている
         const sample = window.__ACLISS_LOG_SAMPLE__;
 
-        const EVENTS = { open: "アプリを開いた", view: "容器を開いた", notfound: "見つからない容器コード", camera: "カメラが使えなかった", "master-error": "マスタを読めなかった", feedback: "ご意見箱" };
+        const EVENTS = { open: "アプリを開いた", view: "容器を開いた", notfound: "見つからない容器コード", camera: "カメラが使えなかった", "master-error": "マスタを読めなかった", feedback: "ご意見箱", torisetsu: "トリセツを開いた" };
         const KINDS = { error: "内容の誤り", trouble: "使いにくい・不具合", idea: "ほしい機能", other: "その他" };
         const VIA = { scan: "バーコード", digits: "手入力", list: "容器一覧", search: "検査項目検索", direct: "URL・戻る" };
         const VIA_ORDER = ["scan", "digits", "list", "search", "direct"];
@@ -501,6 +501,7 @@
               kind: q.get("kind") || "",
               dept: q.get("dept") || "",
               msg: q.get("msg") || "",
+              file: q.get("file") || "",
               agent: (row["cs(User-Agent)"] || "").replace(/\+/g, " "),
             });
           }
@@ -638,6 +639,7 @@
           const by = (e) => events.filter((x) => x.event === e);
           const views = by("view"), missing = by("notfound"), cams = by("camera"), opens = by("open");
           const opinions = feedbacks(events);
+          const manualRows = Object.entries(count(by("torisetsu"), (e) => e.file)).sort((a, b) => b[1] - a[1]);
           const name = (code) => (names && names[code]) || "";
 
           // 期間の全日（記録のない日も0として並べる）
@@ -704,6 +706,7 @@
             </div>
             <div class="tables">
               <section class="card"><h2>見つからなかった容器コード</h2><p class="sub">マスタの登録漏れや、ラベルの印字違いの確認に</p>${table([{ t: "容器コード" }, { t: "回数", n: 1 }, { t: "開いた方法" }], missingRows)}</section>
+              <section class="card"><h2>よく開かれたトリセツ</h2><p class="sub">ケンサのトリセツ（PDF）を開いた回数</p>${table([{ t: "ファイル名" }, { t: "回数", n: 1 }], manualRows)}</section>
               <section class="card"><h2>カメラが使えなかった理由</h2><p class="sub">端末ごとに、アプリを開いて最初の1回だけ記録</p>${table([{ t: "理由" }, { t: "回数", n: 1 }], camRows)}</section>
             </div>
             <section class="card"><h2>ご意見箱</h2><p class="sub">新しい順。患者さんの情報が書かれていたら、ログの扱いに沿って対応してください</p>${table(
@@ -722,12 +725,12 @@
         function saveCsv() {
           const { events, names } = current;
           const name = (code) => (names && names[code]) || "";
-          const head = ["日時（日本時間）", "端末のIPアドレス", "操作", "容器コード", "容器名", "開いた方法", "カメラの理由", "ご意見の種類", "部署", "ご意見", "ブラウザ"];
+          const head = ["日時（日本時間）", "端末のIPアドレス", "操作", "容器コード", "容器名", "開いた方法", "カメラの理由", "トリセツ", "ご意見の種類", "部署", "ご意見", "ブラウザ"];
           const rows = [
             ...events
               .filter((e) => e.event !== "feedback")
-              .map((e) => [e.at, e.ip, EVENTS[e.event] || e.event, e.code, name(e.code), VIA[e.via] || e.via, REASON[e.reason] || e.reason, "", "", "", e.agent]),
-            ...feedbacks(events).map((o) => [o.at, o.ip, EVENTS.feedback, o.code, name(o.code), "", "", o.kind, o.dept, o.text, o.agent]),
+              .map((e) => [e.at, e.ip, EVENTS[e.event] || e.event, e.code, name(e.code), VIA[e.via] || e.via, REASON[e.reason] || e.reason, e.file, "", "", "", e.agent]),
+            ...feedbacks(events).map((o) => [o.at, o.ip, EVENTS.feedback, o.code, name(o.code), "", "", "", o.kind, o.dept, o.text, o.agent]),
           ].sort((a, b) => a[0] - b[0]);
           const lines = rows.map(([at, ...rest]) => [stamp(at), ...rest].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
           const blob = new Blob(["\uFEFF" + [head.join(","), ...lines].join("\r\n")], { type: "text/csv" });

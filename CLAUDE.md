@@ -11,6 +11,8 @@
    - `ログ集計ツール.html` … `intranet/log-summary.html` のコピー
    - `acliss/master/phonebook.csv` … 電話帳のデータがない時は、1行目 `大分類,小分類,内線番号,説明` だけのCSV（UTF-8・BOM付き）。
      ユーザーから電話帳のデータをもらったら、その内容で作る
+   - `acliss/master/torisetsu.csv` … ケンサのトリセツのPDFをもらっていない時は、1行目 `分類,タイトル,ファイル名,説明,更新日` だけのCSV
+     （UTF-8・BOM付き）。PDFをもらったら `acliss/torisetsu/` に入れ、その一覧で作る。PDFも院内の資料なのでリポジトリには入れない
    - zip は日本語のファイル名に UTF-8 フラグを立てて作る（Python の zipfile で `flag_bits |= 0x800`）。
      ロケールが POSIX の環境で `zip` コマンドを使うとフラグが付かず、Windows で展開すると名前が化ける。
 2. **プレビュー**: 同じURLのまま公開し直す。

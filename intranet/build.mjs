@@ -13,6 +13,8 @@ const buildId = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
 
 // iPhoneなどブラウザ内蔵のバーコード読み取りがない端末で使う読み取り部品
 const zxingFile = path.join(root, "node_modules/@zxing/browser/umd/zxing-browser.min.js");
+// ケンサのトリセツ（PDF）を画面の中で表示する部品。古めの端末でも動く legacy 版を使う
+const pdfjsDir = path.join(root, "node_modules/pdfjs-dist");
 
 // 端末に古いファイルが残らないよう、読み込むURLにビルドごとの番号を付ける
 async function readApp(file) {
@@ -33,6 +35,15 @@ for (const icon of appIcons) {
   await cp(path.join(here, "icons", icon), path.join(out, "icons", icon));
 }
 await cp(zxingFile, path.join(out, "vendor/zxing-browser.min.js"));
+// IISは初期設定では .mjs を配信しないので、.js にして置く（中身はそのまま）
+await mkdir(path.join(out, "vendor/pdfjs"), { recursive: true });
+await cp(path.join(pdfjsDir, "legacy/build/pdf.min.mjs"), path.join(out, "vendor/pdfjs/pdf.min.js"));
+await cp(path.join(pdfjsDir, "legacy/build/pdf.worker.min.mjs"), path.join(out, "vendor/pdfjs/pdf.worker.min.js"));
+await cp(path.join(pdfjsDir, "LICENSE"), path.join(out, "vendor/pdfjs/LICENSE"));
+// 埋め込まれていない日本語フォント・標準フォント・一部の画像形式を表示するためのデータ
+for (const dir of ["cmaps", "standard_fonts", "wasm", "iccs"]) {
+  await cp(path.join(pdfjsDir, dir), path.join(out, "vendor/pdfjs", dir), { recursive: true });
+}
 
 // 利用の記録用の空の画像（1×1の透明なGIF）。アプリがこれを取りに行くと、Webサーバーのアクセスログに記録が残る
 await writeFile(
@@ -43,8 +54,10 @@ await writeFile(
 // マスタCSVと写真は院内で別管理するため、置き場所と説明だけを用意しておく。
 await mkdir(path.join(out, "master"), { recursive: true });
 await mkdir(path.join(out, "images"), { recursive: true });
+await mkdir(path.join(out, "torisetsu"), { recursive: true });
 await cp(path.join(here, "placeholders/master-README.txt"), path.join(out, "master/README.txt"));
 await cp(path.join(here, "placeholders/images-README.txt"), path.join(out, "images/README.txt"));
+await cp(path.join(here, "placeholders/torisetsu-README.txt"), path.join(out, "torisetsu/README.txt"));
 
 console.log(`intranet-dist/ を作成しました（ビルド ${buildId}）`);
 
@@ -56,6 +69,16 @@ async function buildPreview() {
     "master/containers.csv": await readFile(path.join(sampleDir, "containers.csv"), "utf8"),
     "master/test_items.csv": await readFile(path.join(sampleDir, "test_items.csv"), "utf8"),
     "master/phonebook.csv": await readFile(path.join(sampleDir, "phonebook.csv"), "utf8"),
+    "master/torisetsu.csv": await readFile(path.join(sampleDir, "torisetsu.csv"), "utf8"),
+  };
+  // 架空のトリセツ（PDF）と、それを表示する部品
+  const manuals = {};
+  for (const file of await readdir(path.join(sampleDir, "torisetsu"))) {
+    manuals[file] = (await readFile(path.join(sampleDir, "torisetsu", file))).toString("base64");
+  }
+  const pdfjs = {
+    "pdf.min.js": await readFile(path.join(pdfjsDir, "legacy/build/pdf.min.mjs"), "utf8"),
+    "pdf.worker.min.js": await readFile(path.join(pdfjsDir, "legacy/build/pdf.worker.min.mjs"), "utf8"),
   };
   const images = Object.fromEntries(
     Object.entries(SAMPLE_PHOTOS).map(([code, photo]) => [
@@ -71,7 +94,7 @@ async function buildPreview() {
     assets[`icons/${icon}`] = `data:image/png;base64,${png.toString("base64")}`;
   }
   const openingLogo = `data:image/png;base64,${(await readFile(path.join(here, "icons", "icon-512.png"))).toString("base64")}`;
-  const previewData = JSON.stringify({ files, images, assets }).replace(/</g, "\\u003c");
+  const previewData = JSON.stringify({ files, images, assets, manuals, pdfjs }).replace(/</g, "\\u003c");
   const scripts = [
     `window.__ACLISS_PREVIEW__ = ${previewData};`,
     await readFile(zxingFile, "utf8"),
@@ -180,6 +203,7 @@ function sampleLog() {
         if (rand() < 0.03) add(t, `e=notfound&code=${pick({ 485: 3, "099": 1 })}&via=${pick({ scan: 2, search: 1 })}`);
         else add(t, `e=view&code=${pick(codes)}&via=${pick(via)}`);
       }
+      if (rand() < 0.12) add(new Date(at.getTime() + 200e3), `e=torisetsu&file=${pick({ "sample-blood-culture.pdf": 5, "sample-coagulation.pdf": 3, "sample-urine.pdf": 2 })}`);
     }
   }
   // ご意見箱（架空）。長い本文は120文字ずつに分けて届く

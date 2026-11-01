@@ -870,3 +870,27 @@ a.row:active {
   color: var(--navy);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------- ケンサのトリセツ */
+
+/* PDFのページを1枚ずつ、紙のように縦に並べる。描き終わるまでは枠だけ出す */
+.pdf {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.pdf-page {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--white);
+  box-shadow: 0 1px 3px rgb(22 27 38 / 0.08);
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+}
+.pdf-page canvas {
+  width: 100%;
+  height: auto;
+}
