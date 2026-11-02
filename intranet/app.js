@@ -105,6 +105,12 @@
     let text = preview && preview.files[path];
     let lastModified = null;
     if (!preview) {
+      // 共有フォルダなどから index.html を直接開くと（file://）、ブラウザの制限でファイルを読めない
+      if (location.protocol === "file:") {
+        throw new Error(
+          "共有フォルダなどから index.html を直接開いているため、ブラウザの制限でマスタを読めません。Webサーバーに置いて開くか、確認用の1ファイル版（acliss-local.html）を使ってください。",
+        );
+      }
       const res = await fetch(path, { cache: "no-cache" });
       if (!res.ok) {
         throw new Error(`${path} を読み込めませんでした（${res.status}）。院内サーバーの master フォルダにファイルがあるか確認してください。`);
