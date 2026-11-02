@@ -40,8 +40,6 @@
     message: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
     play: '<path d="M8 5l11 7-11 7z"/>',
-    sound: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9a4 4 0 010 6M19 6.5a8 8 0 010 11"/>',
-    mute: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>',
     up: '<path d="M6 15l6-6 6 6"/>',
   };
 
@@ -757,27 +755,19 @@
   }
 
   // 縦に1本ずつ並べ、上にスワイプすると次の動画にぴたっと止まる（scroll-snap）。
-  // 通信量を抑えるため、読み込むのは見ている動画と次の1本だけ。離れた動画は読み込みを捨てる
+  // 通信量を抑えるため、読み込むのは見ている動画と前後の1本だけ。離れた動画は読み込みを捨てる。
+  // 音は流さない（動画は常に音なしで再生する）
   function shortsPage() {
     return {
       html: html`<div class="shorts"><div class="shorts-feed" data-feed><p class="shorts-state">読み込み中...</p></div>
-        <button type="button" class="shorts-btn shorts-back" data-back>${icon("back")}戻る</button>
-        <button type="button" class="shorts-btn shorts-sound" data-sound hidden>${icon("mute")}<span>音を出す</span></button></div>`,
+        <button type="button" class="shorts-btn shorts-back" data-back>${icon("back")}戻る</button></div>`,
       mount(root) {
         const feed = root.querySelector("[data-feed]");
-        const soundButton = root.querySelector("[data-sound]");
-        let muted = true; // スマホのブラウザは音ありの自動再生をさせないので、最初は音なしで流す
         let observer = null;
         let stopped = false;
         let current = -1;
         const played = new Set();
         const videos = () => [...feed.querySelectorAll("video")];
-
-        function setSound(next) {
-          muted = next;
-          videos().forEach((v) => (v.muted = muted));
-          soundButton.innerHTML = show(html`${icon(muted ? "mute" : "sound")}<span>${muted ? "音を出す" : "音を消す"}</span>`);
-        }
 
         function load(video, keep) {
           if (keep && !video.getAttribute("src")) {
@@ -801,7 +791,6 @@
           });
           const v = videos()[index];
           if (!v) return;
-          v.muted = muted;
           v.play().catch(() => v.closest(".short").classList.add("paused"));
           if (!played.has(v.dataset.file)) {
             played.add(v.dataset.file);
@@ -822,7 +811,6 @@
             html`<section class="short short-end"><div><p>${items.length}本すべて見ました</p><button type="button" class="primary" data-again-shorts>並びを変えてもう一度</button></div></section>`,
           ]);
           feed.scrollTop = 0;
-          soundButton.hidden = false;
           videos().forEach((v) => {
             v.addEventListener("error", () => {
               if (v.getAttribute("src")) v.closest(".short").classList.add("broken");
@@ -887,7 +875,6 @@
           lastTap = now;
           tapTimer = setTimeout(() => togglePause(section, v), 300);
         });
-        soundButton.addEventListener("click", () => setSound(!muted));
 
         loadShorts()
           .then((list) => {

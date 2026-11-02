@@ -1026,9 +1026,6 @@ a.row:active {
 .shorts-back {
   left: 0.75rem;
 }
-.shorts-sound {
-  right: 0.75rem;
-}
 /* 最初の動画にだけ、数秒「上にスワイプ」の案内を出す */
 .shorts-hint {
   position: absolute;
