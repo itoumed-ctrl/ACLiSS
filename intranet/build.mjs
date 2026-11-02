@@ -63,60 +63,36 @@ await cp(path.join(here, "placeholders/shorts-README.txt"), path.join(out, "shor
 
 console.log(`intranet-dist/ を作成しました（ビルド ${buildId}）`);
 
-// フォルダの中の、指定した拡張子のファイルを { ファイル名: base64 } にする（フォルダがなければ空）
-async function embedDir(dir, ext) {
-  const out = {};
-  const names = await readdir(dir).catch(() => []);
-  for (const file of names.filter((f) => f.toLowerCase().endsWith(ext))) {
-    out[file] = (await readFile(path.join(dir, file))).toString("base64");
-  }
-  return out;
-}
-
-// CSVはExcelの保存のしかたで UTF-8 と Shift_JIS のどちらもあるので、アプリと同じく両方読む
-async function readCsvText(file) {
-  const buffer = await readFile(file).catch(() => null);
-  if (!buffer) return undefined;
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
-  } catch {
-    return new TextDecoder("shift_jis").decode(buffer);
-  }
-}
-
-// 画面を確認するための1ファイル版。index.html に、CSS・JavaScript・CSV・写真・PDF・動画を埋め込み、
-// サーバーに置かなくても開くだけで動くようにする。院内サーバーに置くものではない。
-//   開発用プレビュー（--preview）: 架空のサンプル（intranet/preview/）を埋め込む
-//   確認用（--local=フォルダ）  : 院内の acliss フォルダ（master/・images/・torisetsu/・shorts/）を埋め込む。
-//                                 共有フォルダに置いた院内PCでダブルクリックして動きを確かめる用
-async function buildPreview(localDir) {
+// 開発中に画面を確認するための1ファイル版。index.html に、CSS・JavaScript・サンプルのCSVと
+// 仮の写真を埋め込み、サーバーに置かなくても開くだけで動くようにする。院内サーバーに置くものではない。
+async function buildPreview() {
   const sampleDir = path.join(here, "preview");
-  const csvDir = localDir ? path.join(localDir, "master") : sampleDir;
-  const files = {};
-  for (const name of ["containers", "test_items", "phonebook", "torisetsu", "shorts"]) {
-    const text = await readCsvText(path.join(csvDir, `${name}.csv`));
-    if (text !== undefined) files[`master/${name}.csv`] = text;
+  const files = {
+    "master/containers.csv": await readFile(path.join(sampleDir, "containers.csv"), "utf8"),
+    "master/test_items.csv": await readFile(path.join(sampleDir, "test_items.csv"), "utf8"),
+    "master/phonebook.csv": await readFile(path.join(sampleDir, "phonebook.csv"), "utf8"),
+    "master/torisetsu.csv": await readFile(path.join(sampleDir, "torisetsu.csv"), "utf8"),
+  };
+  // 架空のトリセツ（PDF）と、それを表示する部品
+  const manuals = {};
+  for (const file of await readdir(path.join(sampleDir, "torisetsu"))) {
+    manuals[file] = (await readFile(path.join(sampleDir, "torisetsu", file))).toString("base64");
   }
-  const manuals = await embedDir(path.join(localDir || sampleDir, "torisetsu"), ".pdf");
-  const shorts = await embedDir(path.join(localDir || sampleDir, "shorts"), ".mp4");
+  // 架空のショート動画（ファイル名がそのままタイトルになる）
+  const shorts = {};
+  for (const file of await readdir(path.join(sampleDir, "shorts"))) {
+    shorts[file] = (await readFile(path.join(sampleDir, "shorts", file))).toString("base64");
+  }
   const pdfjs = {
     "pdf.min.js": await readFile(path.join(pdfjsDir, "legacy/build/pdf.min.mjs"), "utf8"),
     "pdf.worker.min.js": await readFile(path.join(pdfjsDir, "legacy/build/pdf.worker.min.mjs"), "utf8"),
   };
-  // 写真：確認用は images/ のPNG、開発用は仮の絵
-  const images = localDir
-    ? Object.fromEntries(
-        Object.entries(await embedDir(path.join(localDir, "images"), ".png")).map(([file, data]) => [
-          file.replace(/\.png$/i, ""),
-          `data:image/png;base64,${data}`,
-        ]),
-      )
-    : Object.fromEntries(
-        Object.entries(SAMPLE_PHOTOS).map(([code, photo]) => [
-          code,
-          `data:image/svg+xml;charset=utf-8,${encodeURIComponent(drawSamplePhoto(code, photo))}`,
-        ]),
-      );
+  const images = Object.fromEntries(
+    Object.entries(SAMPLE_PHOTOS).map(([code, photo]) => [
+      code,
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(drawSamplePhoto(code, photo))}`,
+    ]),
+  );
   const inlineScript = (code) => `<script>${code.replace(/<\/(script)/gi, "<\\/$1")}</script>`;
   const assets = {};
   // プレビューで使うのは画面の中のアイコンだけ（タブ・ホーム画面のアイコンは埋め込まない）
@@ -134,28 +110,26 @@ async function buildPreview(localDir) {
 
   // 置き換える文字列に「$」が含まれていても崩れないよう、関数で置き換える
   const html = (await readApp("index.html"))
-    .replace("<title>ACLiSS</title>", () => (localDir ? "<title>ACLiSS 確認用</title>" : "<title>ACLiSS 院内版プレビュー</title>"))
+    .replace("<title>ACLiSS</title>", () => "<title>ACLiSS 院内版プレビュー</title>")
     .replace(/ *<link rel="(icon|apple-touch-icon|manifest)"[^>]*>\n/g, () => "")
     .replace(/src="icons\/icon-512\.png[^"]*"/, () => `src="${openingLogo}"`);
   const css = await readApp("app.css");
   const page = html
     .replace(/<link rel="stylesheet"[^>]*>/, () => `<style>${css}${PREVIEW_BAR_CSS}</style>`)
-    .replace("<body>", () => `<body>\n    ${localDir ? LOCAL_BAR : PREVIEW_BAR}`)
+    .replace("<body>", () => `<body>\n    ${PREVIEW_BAR}`)
     // 本番では app.js を head に defer で置くが、埋め込む時はページの最後で動かす
     .replace(/\s*<!-- defer:[^>]*-->\s*<script src="app\.js[^"]*" defer><\/script>/, () => "")
     .replace("</body>", () => `${scripts.map(inlineScript).join("\n")}\n  </body>`);
 
   const previewDir = path.join(root, "intranet-preview");
   await mkdir(previewDir, { recursive: true });
-  const name = localDir ? "acliss-local.html" : "acliss-preview.html";
-  await writeFile(path.join(previewDir, name), page);
-  console.log(`intranet-preview/${name} を作成しました`);
+  await writeFile(path.join(previewDir, "acliss-preview.html"), page);
+  console.log("intranet-preview/acliss-preview.html を作成しました");
 }
 
 const PREVIEW_BAR_CSS = `
 .preview-bar { background: #ffc000; color: #203863; font-size: 12px; font-weight: 600; padding: 6px 16px; text-align: center; }`;
 const PREVIEW_BAR = `<div class="preview-bar">開発用プレビュー：サンプルデータで表示しています。カメラはこの画面では使えません（ラベル数字の手入力は使えます）</div>`;
-const LOCAL_BAR = `<div class="preview-bar">確認用：${new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })} 時点のマスタを埋め込んだ版です。CSVを差し替えても反映されません。カメラは使えません（ラベル数字の手入力は使えます）</div>`;
 
 const SAMPLE_PHOTOS = {
   "001": { kind: "tube", cap: "#7a4a25" },
@@ -269,5 +243,3 @@ if (process.argv.includes("--preview")) {
   await buildPreview();
   await buildLogPreview();
 }
-const localArg = process.argv.find((a) => a.startsWith("--local="));
-if (localArg) await buildPreview(path.resolve(localArg.slice("--local=".length)));

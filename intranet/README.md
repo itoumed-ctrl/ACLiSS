@@ -188,17 +188,7 @@ IISのログファイル（例: `C:\inetpub\logs\LogFiles\W3SVC1\u_ex261020.log`
 npm install
 npm run build:intranet              # intranet-dist/ を作る
 npm run build:intranet -- --preview # あわせて開発確認用の1ファイル版 intranet-preview/ も作る
-npm run build:intranet -- --local=院内のaclissフォルダ  # 院内のマスタ等を埋め込んだ確認用 intranet-preview/acliss-local.html を作る
 ```
-
-### 共有フォルダに置いて院内PCで動きを確かめる時
-
-`index.html` を共有フォルダからダブルクリックで開く（アドレスが `file://` や `\\サーバー\…` になる）と、
-ブラウザの安全のための制限で、`master/` のCSVなどを読めません（画面に理由が出ます）。
-マスタを入れた状態の動きを院内PCで確かめるには、`--local=` で作る `acliss-local.html` を使います。
-`master/`・`images/`・`torisetsu/`・`shorts/` の中身を1つのHTMLに埋め込んであるので、
-共有フォルダに置いてダブルクリックするだけで動きます。ただし作った時点の内容が入っているだけで、
-後からCSVを差し替えても反映されません（作り直しが必要です）。院内のデータが入るので、共有する範囲に注意してください。
 
 アプリ本体は、手書きの3ファイルだけでできています。React・Tailwind・TypeScriptなどは使わず、
 変換（バンドル）もしていません。Vercel版の画面部品とは共有していないため、院内サーバー版だけを
