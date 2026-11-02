@@ -413,18 +413,13 @@
         "容器一覧から選ぶ",
         "容器コードや種類から探します",
       )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav>${
-        // 電話帳は容器を調べる2つとは用途が違うので、枠を分けて間をあける
+        // 用途ごとに枠を分けて間をあける（容器を調べる・学ぶ・電話する）
         html`<nav class="card list menu">${menuItem("#/torisetsu", "menu-torisetsu.png", "ケンサのトリセツ", "検査の教育資料を読みます")}${menuItem(
           "#/shorts",
           "menu-shorts.png",
           "ACLiSS-Shorts",
           "検査の短い動画を見ます",
-        )}${menuItem(
-          "#/phonebook",
-          "menu-phonebook.png",
-          "電話帳",
-          "各検査部署へ電話します",
-        )}</nav>`
+        )}</nav><nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "各検査部署へ電話します")}</nav>`
       }<a class="footer-link" href="#/feedback">${icon("message")}ご意見箱（内容の誤り・ご要望）</a></div>`,
       mount: scanner.mount,
     };
