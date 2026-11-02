@@ -841,19 +841,19 @@
           }
         }
 
-        // ダブルタップした所から、半透明のハートを5つ浮かべる（向き・大きさ・飛ぶ方向は少しずつばらす）
+        // ダブルタップした所から、半透明のハートを10個浮かべる（向き・大きさ・飛ぶ方向は少しずつばらす）
         function hearts(section, e) {
           const rect = section.getBoundingClientRect();
           const x = e.clientX ? e.clientX - rect.left : rect.width / 2;
           const y = e.clientY ? e.clientY - rect.top : rect.height / 2;
           const between = (a, b) => a + Math.random() * (b - a);
-          for (let i = 0; i < 5; i++) {
+          for (let i = 0; i < 10; i++) {
             const heart = document.createElement("span");
             heart.className = "short-heart";
             heart.innerHTML = HEART;
-            heart.style.cssText = `left:${x}px;top:${y}px;--dx:${between(-70, 70)}px;--dy:${between(-220, -130)}px;--r:${between(-25, 25)}deg;--s:${between(0.8, 1.3)};--d:${i * 70}ms`;
+            heart.style.cssText = `left:${x}px;top:${y}px;--dx:${between(-90, 90)}px;--dy:${between(-240, -130)}px;--r:${between(-25, 25)}deg;--s:${between(0.8, 1.3)};--d:${i * 45}ms`;
             section.append(heart);
-            setTimeout(() => heart.remove(), 1400);
+            setTimeout(() => heart.remove(), 1700); // 最後のハート（0.4秒遅れ）が消え終わってから取り除く
           }
         }
 
