@@ -746,6 +746,9 @@
     return [...new Set(files)].map((file) => ({ file, title: shortTitle(file) }));
   }
 
+  const HEART =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 5.3 3.1 1.7-1.9 3.2-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+
   const shortUrl = (file) => (preview ? `data:video/mp4;base64,${preview.shorts[file]}` : `${SHORTS}${encodeURIComponent(file)}`);
 
   // 並びを毎回変える（フィッシャー–イェーツのシャッフル）
@@ -845,11 +848,7 @@
           feed.querySelector("[data-again-shorts]").addEventListener("click", () => render(list));
         }
 
-        // 動画をタップすると一時停止・再開
-        feed.addEventListener("click", (e) => {
-          const section = e.target.closest(".short");
-          const v = section && section.querySelector("video");
-          if (!v || !v.getAttribute("src")) return;
+        function togglePause(section, v) {
           if (v.paused) {
             v.play().catch(() => {});
             section.classList.remove("paused");
@@ -857,6 +856,41 @@
             v.pause();
             section.classList.add("paused");
           }
+        }
+
+        // ダブルタップした所から、半透明のハートを5つ浮かべる（向き・大きさ・飛ぶ方向は少しずつばらす）
+        function hearts(section, e) {
+          const rect = section.getBoundingClientRect();
+          const x = e.clientX ? e.clientX - rect.left : rect.width / 2;
+          const y = e.clientY ? e.clientY - rect.top : rect.height / 2;
+          const between = (a, b) => a + Math.random() * (b - a);
+          for (let i = 0; i < 5; i++) {
+            const heart = document.createElement("span");
+            heart.className = "short-heart";
+            heart.innerHTML = HEART;
+            heart.style.cssText = `left:${x}px;top:${y}px;--dx:${between(-70, 70)}px;--dy:${between(-220, -130)}px;--r:${between(-25, 25)}deg;--s:${between(0.8, 1.3)};--d:${i * 70}ms`;
+            section.append(heart);
+            setTimeout(() => heart.remove(), 1400);
+          }
+        }
+
+        // 1回タップで一時停止・再開、すばやく2回タップでハート。
+        // 1回目のあと少し待ち、2回目が来なければ一時停止にする
+        let lastTap = 0;
+        let tapTimer = null;
+        feed.addEventListener("click", (e) => {
+          const section = e.target.closest(".short");
+          const v = section && section.querySelector("video");
+          if (!v || !v.getAttribute("src")) return;
+          const now = Date.now();
+          if (now - lastTap < 300) {
+            clearTimeout(tapTimer);
+            lastTap = 0;
+            hearts(section, e);
+            return;
+          }
+          lastTap = now;
+          tapTimer = setTimeout(() => togglePause(section, v), 300);
         });
         soundButton.addEventListener("click", () => setSound(!muted));
 
@@ -876,6 +910,7 @@
         return {
           destroy() {
             stopped = true;
+            clearTimeout(tapTimer);
             if (observer) observer.disconnect();
             videos().forEach((v) => load(v, false));
           },
