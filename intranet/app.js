@@ -5,6 +5,7 @@
 
   const ZXING_JS = "vendor/zxing-browser.min.js?v=__BUILD_ID__";
   const PDFJS = "vendor/pdfjs/";
+  const SHORTS = "shorts/";
   const CACHE_KEY = "acliss-intranet-master-v3";
 
   // 開発確認用のプレビュー（npm run build:intranet -- --preview）では、CSVと画像がページに埋め込まれている
@@ -38,6 +39,10 @@
     phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/>',
     message: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
+    play: '<path d="M8 5l11 7-11 7z"/>',
+    sound: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9a4 4 0 010 6M19 6.5a8 8 0 010 11"/>',
+    mute: '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>',
+    up: '<path d="M6 15l6-6 6 6"/>',
   };
 
   const icon = (name) => ({ html: `<span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[name]}</svg></span>` });
@@ -275,6 +280,7 @@
   //   e=notfound  マスタにない容器コードを開いた（code・via は view と同じ）
   //   e=camera    カメラが使えなかった（reason=https・denied・nodevice・other）
   //   e=torisetsu ケンサのトリセツを開いた（file=PDFのファイル名）
+  //   e=shorts    ACLiSS-Shorts の動画を再生した（file=MP4のファイル名。1回開くごとに1本1回まで）
   //   e=feedback  ご意見箱から送った（下の feedbackPage を参照）
   function log(event, details) {
     if (preview) return; // 開発確認用のプレビューでは記録しない
@@ -409,6 +415,11 @@
       )}${menuItem("#/search", "menu-search.png", "検査項目から探す", "検査項目名で検索します")}</nav>${
         // 電話帳は容器を調べる2つとは用途が違うので、枠を分けて間をあける
         html`<nav class="card list menu">${menuItem("#/torisetsu", "menu-torisetsu.png", "ケンサのトリセツ", "検査の教育資料を読みます")}${menuItem(
+          "#/shorts",
+          "menu-shorts.png",
+          "ACLiSS-Shorts",
+          "検査の短い動画を見ます",
+        )}${menuItem(
           "#/phonebook",
           "menu-phonebook.png",
           "電話帳",
@@ -692,6 +703,181 @@
             stopped = true;
             if (observer) observer.disconnect();
             if (task) task.destroy();
+          },
+        };
+      },
+    };
+  }
+
+  // ================================================================ ACLiSS-Shorts（ショート動画）
+
+  // 動画は shorts/ フォルダにMP4を置くだけで増える。一覧の取り方は次の順:
+  //   1. master/shorts.csv があれば、その行（タイトル・ファイル名・説明）
+  //   2. なければ shorts/ フォルダの中身。IISの「ディレクトリの参照」をこのフォルダだけ有効にすると、
+  //      フォルダを開いた時にファイルの一覧が返るので、そこからMP4を拾う（ファイル名がタイトルになる）
+  const isMp4Name = (file) => /^[^\\/:*?"<>|]+\.mp4$/i.test(file) && !file.startsWith(".");
+  const shortTitle = (file) => file.replace(/\.mp4$/i, "");
+
+  async function loadShorts() {
+    if (preview) return Object.keys(preview.shorts).map((file) => ({ file, title: shortTitle(file) }));
+    try {
+      const { records } = await readCsv("master/shorts.csv", ["ファイル名"]);
+      const list = records
+        .map((row) => ({ file: text(row["ファイル名"]), title: text(row["タイトル"]), note: text(row["説明"]) }))
+        .filter((s) => s.file && isMp4Name(s.file))
+        .map((s) => ({ ...s, title: s.title || shortTitle(s.file) }));
+      if (list.length > 0) return list;
+    } catch {
+      // 一覧CSVがなければ、フォルダの中身を見る
+    }
+    const res = await fetch(SHORTS, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`shorts フォルダの一覧を読めませんでした（${res.status}）`);
+    // 一覧のページは文字として読むだけで、中のスクリプトなどは動かさない
+    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+    const files = [...doc.querySelectorAll("a[href]")]
+      .map((a) => {
+        try {
+          return decodeURIComponent(new URL(a.getAttribute("href"), res.url).pathname.split("/").pop());
+        } catch {
+          return "";
+        }
+      })
+      .filter(isMp4Name);
+    return [...new Set(files)].map((file) => ({ file, title: shortTitle(file) }));
+  }
+
+  const shortUrl = (file) => (preview ? `data:video/mp4;base64,${preview.shorts[file]}` : `${SHORTS}${encodeURIComponent(file)}`);
+
+  // 並びを毎回変える（フィッシャー–イェーツのシャッフル）
+  function shuffle(list) {
+    const a = [...list];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // 縦に1本ずつ並べ、上にスワイプすると次の動画にぴたっと止まる（scroll-snap）。
+  // 通信量を抑えるため、読み込むのは見ている動画と次の1本だけ。離れた動画は読み込みを捨てる
+  function shortsPage() {
+    return {
+      html: html`<div class="shorts"><div class="shorts-feed" data-feed><p class="shorts-state">読み込み中...</p></div>
+        <button type="button" class="shorts-btn shorts-back" data-back>${icon("back")}戻る</button>
+        <button type="button" class="shorts-btn shorts-sound" data-sound hidden>${icon("mute")}<span>音を出す</span></button></div>`,
+      mount(root) {
+        const feed = root.querySelector("[data-feed]");
+        const soundButton = root.querySelector("[data-sound]");
+        let muted = true; // スマホのブラウザは音ありの自動再生をさせないので、最初は音なしで流す
+        let observer = null;
+        let stopped = false;
+        let current = -1;
+        const played = new Set();
+        const videos = () => [...feed.querySelectorAll("video")];
+
+        function setSound(next) {
+          muted = next;
+          videos().forEach((v) => (v.muted = muted));
+          soundButton.innerHTML = show(html`${icon(muted ? "mute" : "sound")}<span>${muted ? "音を出す" : "音を消す"}</span>`);
+        }
+
+        function load(video, keep) {
+          if (keep && !video.getAttribute("src")) {
+            video.src = shortUrl(video.dataset.file);
+          } else if (!keep && video.getAttribute("src")) {
+            video.pause();
+            video.removeAttribute("src");
+            video.load();
+          }
+        }
+
+        function playAt(index) {
+          current = index;
+          videos().forEach((v, i) => {
+            load(v, i >= index - 1 && i <= index + 1);
+            if (i !== index) {
+              v.pause();
+              if (v.getAttribute("src")) v.currentTime = 0;
+              v.closest(".short").classList.remove("paused");
+            }
+          });
+          const v = videos()[index];
+          if (!v) return;
+          v.muted = muted;
+          v.play().catch(() => v.closest(".short").classList.add("paused"));
+          if (!played.has(v.dataset.file)) {
+            played.add(v.dataset.file);
+            log("shorts", { file: v.dataset.file });
+          }
+        }
+
+        function render(list) {
+          const items = shuffle(list);
+          feed.innerHTML = show([
+            items.map(
+              (s, i) => html`<section class="short"><video data-file="${s.file}" playsinline muted loop preload="metadata"></video>
+                <span class="short-play" aria-hidden="true">${icon("play")}</span>
+                <div class="short-info"><p class="short-count">${i + 1} / ${items.length}</p><h2>${s.title}</h2>${s.note && html`<p>${s.note}</p>`}</div>${
+                  i === 0 && items.length > 1 && html`<p class="shorts-hint">${icon("up")}上にスワイプで次の動画</p>`
+                }</section>`,
+            ),
+            html`<section class="short short-end"><div><p>${items.length}本すべて見ました</p><button type="button" class="primary" data-again-shorts>並びを変えてもう一度</button></div></section>`,
+          ]);
+          feed.scrollTop = 0;
+          soundButton.hidden = false;
+          videos().forEach((v) => {
+            v.addEventListener("error", () => {
+              if (v.getAttribute("src")) v.closest(".short").classList.add("broken");
+            });
+          });
+          if (observer) observer.disconnect();
+          observer = new IntersectionObserver(
+            (entries) => {
+              for (const e of entries) {
+                if (!e.isIntersecting) continue;
+                const index = [...feed.children].indexOf(e.target);
+                if (index !== current) playAt(index);
+              }
+            },
+            { root: feed, threshold: 0.6 },
+          );
+          [...feed.children].forEach((section) => observer.observe(section));
+          feed.querySelector("[data-again-shorts]").addEventListener("click", () => render(list));
+        }
+
+        // 動画をタップすると一時停止・再開
+        feed.addEventListener("click", (e) => {
+          const section = e.target.closest(".short");
+          const v = section && section.querySelector("video");
+          if (!v || !v.getAttribute("src")) return;
+          if (v.paused) {
+            v.play().catch(() => {});
+            section.classList.remove("paused");
+          } else {
+            v.pause();
+            section.classList.add("paused");
+          }
+        });
+        soundButton.addEventListener("click", () => setSound(!muted));
+
+        loadShorts()
+          .then((list) => {
+            if (stopped) return;
+            if (list.length === 0) throw new Error("動画がありません");
+            render(list);
+          })
+          .catch(() => {
+            if (stopped) return;
+            feed.innerHTML = show(
+              html`<div class="shorts-state"><p>ショート動画がまだありません。</p><p class="shorts-admin">管理者の方へ：shorts フォルダにMP4を置き、そのフォルダだけIISの「ディレクトリの参照」を有効にしてください（または master/shorts.csv に一覧を書いてください）。</p></div>`,
+            );
+          });
+
+        return {
+          destroy() {
+            stopped = true;
+            if (observer) observer.disconnect();
+            videos().forEach((v) => load(v, false));
           },
         };
       },
@@ -1109,6 +1295,7 @@
     if (path === "/search") return searchPage(query);
     if (path === "/phonebook") return phonebookPage();
     if (path === "/torisetsu") return manualsPage();
+    if (path === "/shorts") return shortsPage();
     const manual = path.match(/^\/torisetsu\/([^/]+)$/);
     if (manual && isPdfName(decodeURIComponent(manual[1]))) return manualPage(decodeURIComponent(manual[1]));
     if (path === "/feedback") return feedbackPage(query);

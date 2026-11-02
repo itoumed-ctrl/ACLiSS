@@ -55,9 +55,11 @@ await writeFile(
 await mkdir(path.join(out, "master"), { recursive: true });
 await mkdir(path.join(out, "images"), { recursive: true });
 await mkdir(path.join(out, "torisetsu"), { recursive: true });
+await mkdir(path.join(out, "shorts"), { recursive: true });
 await cp(path.join(here, "placeholders/master-README.txt"), path.join(out, "master/README.txt"));
 await cp(path.join(here, "placeholders/images-README.txt"), path.join(out, "images/README.txt"));
 await cp(path.join(here, "placeholders/torisetsu-README.txt"), path.join(out, "torisetsu/README.txt"));
+await cp(path.join(here, "placeholders/shorts-README.txt"), path.join(out, "shorts/README.txt"));
 
 console.log(`intranet-dist/ を作成しました（ビルド ${buildId}）`);
 
@@ -75,6 +77,11 @@ async function buildPreview() {
   const manuals = {};
   for (const file of await readdir(path.join(sampleDir, "torisetsu"))) {
     manuals[file] = (await readFile(path.join(sampleDir, "torisetsu", file))).toString("base64");
+  }
+  // 架空のショート動画（ファイル名がそのままタイトルになる）
+  const shorts = {};
+  for (const file of await readdir(path.join(sampleDir, "shorts"))) {
+    shorts[file] = (await readFile(path.join(sampleDir, "shorts", file))).toString("base64");
   }
   const pdfjs = {
     "pdf.min.js": await readFile(path.join(pdfjsDir, "legacy/build/pdf.min.mjs"), "utf8"),
@@ -94,7 +101,7 @@ async function buildPreview() {
     assets[`icons/${icon}`] = `data:image/png;base64,${png.toString("base64")}`;
   }
   const openingLogo = `data:image/png;base64,${(await readFile(path.join(here, "icons", "icon-512.png"))).toString("base64")}`;
-  const previewData = JSON.stringify({ files, images, assets, manuals, pdfjs }).replace(/</g, "\\u003c");
+  const previewData = JSON.stringify({ files, images, assets, manuals, shorts, pdfjs }).replace(/</g, "\\u003c");
   const scripts = [
     `window.__ACLISS_PREVIEW__ = ${previewData};`,
     await readFile(zxingFile, "utf8"),
@@ -204,6 +211,10 @@ function sampleLog() {
         else add(t, `e=view&code=${pick(codes)}&via=${pick(via)}`);
       }
       if (rand() < 0.12) add(new Date(at.getTime() + 200e3), `e=torisetsu&file=${pick({ "sample-blood-culture.pdf": 5, "sample-coagulation.pdf": 3, "sample-urine.pdf": 2 })}`);
+      if (rand() < 0.15) {
+        const file = pick({ "採血管の順番（サンプル）.mp4": 5, "検体ラベルの貼り方（サンプル）.mp4": 4, "冷やして提出する検体（サンプル）.mp4": 3 });
+        add(new Date(at.getTime() + 260e3), `e=shorts&file=${encodeURIComponent(file)}`);
+      }
     }
   }
   // ご意見箱（架空）。長い本文は120文字ずつに分けて届く
