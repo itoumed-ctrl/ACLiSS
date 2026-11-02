@@ -416,17 +416,18 @@
           "#/shorts",
           "menu-shorts.png",
           "ACLiSS-Shorts",
-          "検体採取に関するショート動画を見ます",
+          ["検体採取に関する", "ショート動画を見ます"],
         )}</nav><nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "各検査部署へ電話します")}</nav>`
       }<a class="footer-link" href="#/feedback">${icon("message")}ご意見箱（内容の誤り・ご要望）</a></div>`,
       mount: scanner.mount,
     };
   }
 
+  // sub を文節の並びで渡すと、狭い画面でも言葉の途中で改行しない
   const menuItem = (href, file, title, sub) =>
-    html`<a href="${href}" class="row">${tile(file)}<span class="row-text"><span class="row-title">${title}</span><span class="row-sub">${sub}</span></span>${icon(
-      "chevron",
-    )}</a>`;
+    html`<a href="${href}" class="row">${tile(file)}<span class="row-text"><span class="row-title">${title}</span><span class="row-sub">${
+      Array.isArray(sub) ? sub.map((s) => html`<span>${s}</span>`) : sub
+    }</span></span>${icon("chevron")}</a>`;
 
   // ================================================================ 容器一覧
 

@@ -282,6 +282,9 @@ a.row:active {
 .row.off .row-title {
   font-weight: 400;
 }
+.menu .row-sub span {
+  display: inline-block;
+}
 .menu .row-title {
   font-size: 1.0625rem;
   color: var(--navy);
