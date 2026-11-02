@@ -416,7 +416,7 @@
           "#/shorts",
           "menu-shorts.png",
           "ACLiSS-Shorts",
-          "検査の短い動画を見ます",
+          "検体採取に関するショート動画を見ます",
         )}</nav><nav class="card list menu">${menuItem("#/phonebook", "menu-phonebook.png", "電話帳", "各検査部署へ電話します")}</nav>`
       }<a class="footer-link" href="#/feedback">${icon("message")}ご意見箱（内容の誤り・ご要望）</a></div>`,
       mount: scanner.mount,
